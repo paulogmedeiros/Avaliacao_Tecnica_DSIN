@@ -1,0 +1,136 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  CLIENT
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
+
+enum AppointmentServiceStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+model User {
+  id       String   @id @default(cuid()) @db.VarChar(100)
+  name     String   @db.VarChar(100)
+  email    String   @unique @db.VarChar(100)
+  password String   @db.VarChar(255)
+  phone    String   @db.VarChar(20)
+  role     UserRole @default(CLIENT)
+
+  // appointments Appointment[]
+
+  createdAt DateTime  @default(now()) @db.Timestamp(0) @map("created_at")
+  updatedAt DateTime  @updatedAt @db.Timestamp(0) @map("updated_at")
+  deletedAt DateTime? @db.Timestamp(0) @map("deleted_at") 
+
+  @@index([email])
+  @@map("users")
+}
+
+// model Service {
+//   id              String  @id @default(cuid()) @db.VarChar(100)
+//   name            String  @unique @db.VarChar(100)
+//   description     String? @db.Text
+//   price           Decimal @db.Decimal(10, 2)
+//   durationMinutes Int
+//   isActive        Boolean @default(true)
+
+//   appointmentServices AppointmentService[]
+
+//   createdAt DateTime  @default(now()) @db.Timestamp(0)
+//   updatedAt DateTime  @updatedAt @db.Timestamp(0)
+//   deletedAt DateTime? @db.Timestamp(0)
+
+//   @@index([isActive])
+//   @@map("services")
+// }
+
+// model Appointment {
+//   id String @id @default(cuid()) @db.VarChar(100)
+
+//   clientId String  @db.VarChar(100)
+//   client   User   @relation(
+//   fields: [clientId],
+//   references: [id],
+//   onDelete Cascade
+//   )
+
+//   startAt DateTime @db.Timestamp(0)
+//   endAt   DateTime @db.Timestamp(0)
+
+//   status AppointmentStatus @default(PENDING)
+
+//   services AppointmentService[]
+
+//   createdAt DateTime  @default(now()) @db.Timestamp(0)
+//   updatedAt DateTime  @updatedAt @db.Timestamp(0)
+//   deletedAt DateTime? @db.Timestamp(0)
+
+//   @@index([startAt, endAt, status])
+//   @@index([clientId])
+//   @@map("appointments")
+// }
+
+// model AppointmentService {
+//   id String @id @default(cuid()) @db.VarChar(100)
+
+//   appointmentId String
+//   appointment   Appointment @relation(fields: [appointmentId],references: [id],onDelete, Cascade)
+
+//   serviceId  String
+//   service   Service @relation(
+//   fields: [serviceId],
+//   references id[]
+//   )
+
+//   historicalPrice Decimal @db.Decimal(10, 2)
+
+//   status AppointmentServiceStatus @default(PENDING)
+
+//   createdAt DateTime  @default(now()) @db.Timestamp(0)
+//   updatedAt DateTime  @updatedAt @db.Timestamp(0)
+//   deletedAt DateTime? @db.Timestamp(0)
+
+//   @@index([appointmentId])
+//   @@index([serviceId])
+//   @@map("appointment_services")
+// }
+
+// model BusinessHour {
+//   id Int @id @default(autoincrement())
+
+//   dayOfWeek Int @unique
+
+//   openingTime1 DateTime? @db.Time(0)
+//   closingTime1 DateTime? @db.Time(0)
+
+//   openingTime2 DateTime? @db.Time(0)
+//   closingTime2 DateTime? @db.Time(0)
+
+//   isOpen Boolean @default(true)
+
+//   createdAt DateTime  @default(now()) @db.Timestamp(0)
+//   updatedAt DateTime  @updatedAt @db.Timestamp(0)
+//   deletedAt DateTime? @db.Timestamp(0)
+
+//   @@map("business_hours")
+// }
