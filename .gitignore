@@ -112,3 +112,9 @@ backend/src/generated/prisma/
 
 backend/.agents/
 backend/skills-lock.json
+
+# =========================================
+# Isolated Codex worktrees
+# =========================================
+
+.worktrees/
