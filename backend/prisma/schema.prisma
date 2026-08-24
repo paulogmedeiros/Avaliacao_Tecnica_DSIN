@@ -13,6 +13,15 @@ enum UserRole {
   ADMIN
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
 enum AppointmentStatus {
   PENDING
   CONFIRMED
@@ -38,31 +47,43 @@ model User {
 
   // appointments Appointment[]
 
-  createdAt DateTime  @default(now()) @db.Timestamp(0) @map("created_at")
-  updatedAt DateTime  @updatedAt @db.Timestamp(0) @map("updated_at")
-  deletedAt DateTime? @db.Timestamp(0) @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(0)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamp(0)
 
-  @@index([email])
   @@map("users")
 }
 
-// model Service {
-//   id              String  @id @default(cuid()) @db.VarChar(100)
-//   name            String  @unique @db.VarChar(100)
-//   description     String? @db.Text
-//   price           Decimal @db.Decimal(10, 2)
-//   durationMinutes Int
-//   isActive        Boolean @default(true)
+model Service {
+  id              String  @id @db.VarChar(36)
+  name            String  @unique @db.VarChar(100)
+  description     String? @db.Text
+  price           Decimal @db.Decimal(10, 2)
+  durationMinutes Int     @map("duration_minutes")
+  isActive        Boolean @default(true) @map("is_active")
 
-//   appointmentServices AppointmentService[]
+  // appointmentServices AppointmentService[]
 
-//   createdAt DateTime  @default(now()) @db.Timestamp(0)
-//   updatedAt DateTime  @updatedAt @db.Timestamp(0)
-//   deletedAt DateTime? @db.Timestamp(0)
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @updatedAt @db.Timestamp(0)
 
-//   @@index([isActive])
-//   @@map("services")
-// }
+  @@index([isActive, name])
+  @@map("services")
+}
+
+model BusinessHour {
+  id           Int       @id @default(autoincrement())
+  dayOfWeek    DayOfWeek @unique @map("day_of_week")
+  openingTime  DateTime  @db.Time(0) @map("opening_time")
+  lunchStart   DateTime  @db.Time(0) @map("lunch_start")
+  lunchEnd     DateTime  @db.Time(0) @map("lunch_end")
+  closingTime  DateTime  @db.Time(0) @map("closing_time")
+
+  createdAt DateTime @default(now()) @db.DateTime(0) @map("created_at")
+  updatedAt DateTime @updatedAt @db.DateTime(0) @map("updated_at")
+
+  @@map("business_hours")
+}
 
 // model Appointment {
 //   id String @id @default(cuid()) @db.VarChar(100)
@@ -115,22 +136,4 @@ model User {
 //   @@map("appointment_services")
 // }
 
-// model BusinessHour {
-//   id Int @id @default(autoincrement())
 
-//   dayOfWeek Int @unique
-
-//   openingTime1 DateTime? @db.Time(0)
-//   closingTime1 DateTime? @db.Time(0)
-
-//   openingTime2 DateTime? @db.Time(0)
-//   closingTime2 DateTime? @db.Time(0)
-
-//   isOpen Boolean @default(true)
-
-//   createdAt DateTime  @default(now()) @db.Timestamp(0)
-//   updatedAt DateTime  @updatedAt @db.Timestamp(0)
-//   deletedAt DateTime? @db.Timestamp(0)
-
-//   @@map("business_hours")
-// }
