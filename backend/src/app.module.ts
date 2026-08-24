@@ -2,6 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import Joi from 'joi';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { UserModule } from './user/user.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { AuthGuard } from './auth/guard/auth.guard.js';
+import { APP_GUARD } from '@nestjs/core';
+import { RolesGuard } from './auth/guard/roles.guard.js';
+
 
 @Module({
   imports: [
@@ -33,8 +39,26 @@ import { PrismaModule } from './prisma/prisma.module.js';
             'string.uri': 'DATABASE_URL deve ser uma URL válida, verifique se o formato está correto, se está com algum caracter especial que precisa ser codificado, ou se está faltando algum parâmetro',
             'any.required': 'DATABASE_URL é obrigatório',
           }),
+        JWT_SECRET: Joi.string()
+          .required()
+          .messages({
+            'string.empty': 'JWT_SECRET não pode estar vazio',
+            'any.required': 'JWT_SECRET é obrigatório',
+          }),
       }),
     }),
+    UserModule,
+    AuthModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
 })
 export class AppModule { }
