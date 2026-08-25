@@ -9,6 +9,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { RolesGuard } from './auth/guard/roles.guard.js';
 import { ServiceModule } from './service/service.module.js';
 import { AppointmentModule } from './appointment/appointment.module.js';
+import { ReportModule } from './report/report.module.js';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { AppointmentModule } from './appointment/appointment.module.js';
     AuthModule,
     ServiceModule,
     AppointmentModule,
+    ReportModule,
   ],
   providers: [
     {
