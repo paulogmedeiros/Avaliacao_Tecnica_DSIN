@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { AppointmentTable } from '../components/client/AppointmentTable'
 import { ClientHeader } from '../components/client/ClientHeader'
+import { NewAppointmentDrawer } from '../components/client/NewAppointmentDrawer'
 
 export function AppointmentsPage() {
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
+
   return (
     <div className="client-page">
       <ClientHeader />
@@ -14,7 +18,7 @@ export function AppointmentsPage() {
             <p>Acompanhe seus horários e consulte os serviços realizados.</p>
           </div>
 
-          <button className="new-appointment-button" type="button">
+          <button className="new-appointment-button" type="button" onClick={() => setIsBookingOpen(true)}>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -60,6 +64,8 @@ export function AppointmentsPage() {
           </footer>
         </section>
       </main>
+
+      <NewAppointmentDrawer isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
     </div>
   )
 }
