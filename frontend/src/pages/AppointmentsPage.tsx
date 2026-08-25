@@ -2,16 +2,38 @@ import { useState } from 'react'
 import { AppointmentDetailsModal } from '../components/client/AppointmentDetailsModal'
 import { AppointmentTable } from '../components/client/AppointmentTable'
 import { getAppointmentById } from '../components/client/appointmentDetails.js'
-import { appointments } from '../components/client/appointmentsData'
+import { appointments, prototypeNow } from '../components/client/appointmentsData'
 import { ClientHeader } from '../components/client/ClientHeader'
+import { EditAppointmentDrawer } from '../components/client/EditAppointmentDrawer'
+import { EditRestrictionModal } from '../components/client/EditRestrictionModal'
+import { getEditAvailability } from '../components/client/editRules.js'
 import { NewAppointmentDrawer } from '../components/client/NewAppointmentDrawer'
 
 export function AppointmentsPage() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
+  const [restrictedAppointmentId, setRestrictedAppointmentId] = useState<string | null>(null)
   const selectedAppointment = selectedAppointmentId
     ? getAppointmentById(appointments, selectedAppointmentId)
     : null
+  const editingAppointment = editingAppointmentId ? getAppointmentById(appointments, editingAppointmentId) : null
+  const restrictedAppointment = restrictedAppointmentId ? getAppointmentById(appointments, restrictedAppointmentId) : null
+
+  function requestAppointmentEdit(appointmentId: string) {
+    const appointment = getAppointmentById(appointments, appointmentId)
+    if (!appointment) return
+
+    const availability = getEditAvailability(appointment.scheduledAt, prototypeNow, appointment.status)
+    setSelectedAppointmentId(null)
+
+    if (availability.allowed) {
+      setEditingAppointmentId(appointmentId)
+      return
+    }
+
+    if (availability.reason === 'short_notice') setRestrictedAppointmentId(appointmentId)
+  }
 
   return (
     <div className="client-page">
@@ -37,7 +59,7 @@ export function AppointmentsPage() {
           <div className="appointments-toolbar">
             <div>
               <h2 id="appointments-title">Histórico</h2>
-              <p>4 agendamentos encontrados</p>
+              <p>5 agendamentos encontrados</p>
             </div>
 
             <form className="date-filters">
@@ -59,10 +81,10 @@ export function AppointmentsPage() {
             </form>
           </div>
 
-          <AppointmentTable onViewDetails={setSelectedAppointmentId} />
+          <AppointmentTable onViewDetails={setSelectedAppointmentId} onEditAppointment={requestAppointmentEdit} />
 
           <footer className="appointments-footer">
-            <span>Mostrando 1–4 de 4</span>
+            <span>Mostrando 1–5 de 5</span>
             <div className="pagination" aria-label="Paginação">
               <button type="button" disabled aria-label="Página anterior">‹</button>
               <button type="button" className="pagination__current" aria-current="page">1</button>
@@ -73,7 +95,9 @@ export function AppointmentsPage() {
       </main>
 
       <NewAppointmentDrawer isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
-      <AppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} />
+      <AppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onEdit={requestAppointmentEdit} />
+      <EditAppointmentDrawer key={editingAppointmentId ?? 'no-edit'} appointment={editingAppointment} onClose={() => setEditingAppointmentId(null)} />
+      <EditRestrictionModal appointment={restrictedAppointment} onClose={() => setRestrictedAppointmentId(null)} />
     </div>
   )
 }

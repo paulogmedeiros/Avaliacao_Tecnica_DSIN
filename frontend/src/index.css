@@ -647,6 +647,12 @@ a {
   color: #a7473d;
 }
 
+.icon-button--locked {
+  border-color: #e2b986;
+  background: #fff8ee;
+  color: #a8691f;
+}
+
 .icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.3;
@@ -1594,6 +1600,308 @@ a {
   outline-offset: 3px;
 }
 
+.edit-drawer {
+  width: min(640px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fffdfb;
+  box-shadow: -24px 0 70px rgba(45, 30, 20, 0.18);
+  animation: booking-slide-in 260ms ease-out;
+}
+
+.edit-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 26px 32px 34px;
+}
+
+.edit-rule-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #bfdfcb;
+  border-radius: 13px;
+  background: #f0f8f3;
+}
+
+.edit-rule-banner > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #d9eee1;
+  color: #347851;
+}
+
+.edit-rule-banner svg,
+.restriction-modal__icon svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.edit-rule-banner div {
+  display: grid;
+  gap: 3px;
+}
+
+.edit-rule-banner strong {
+  color: #356d4d;
+  font-size: 0.76rem;
+}
+
+.edit-rule-banner p {
+  margin: 0;
+  color: #648173;
+  font-size: 0.67rem;
+}
+
+.edit-section {
+  margin-top: 28px;
+}
+
+.edit-section + .edit-section {
+  padding-top: 26px;
+  border-top: 1px solid #eee7e2;
+}
+
+.edit-section__heading {
+  display: flex;
+  align-items: start;
+  gap: 11px;
+  margin-bottom: 15px;
+}
+
+.edit-section__heading > span {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #f0dfd2;
+  color: #a9511a;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.edit-section__heading h3 {
+  margin: 0;
+  color: #3b342f;
+  font-size: 0.86rem;
+}
+
+.edit-section__heading p {
+  margin: 4px 0 0;
+  color: #918880;
+  font-size: 0.68rem;
+}
+
+.edit-service-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.edit-service-grid button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 61px;
+  padding: 11px;
+  border: 1px solid #e0d8d1;
+  border-radius: 12px;
+  background: #fff;
+  color: #554c46;
+  cursor: pointer;
+  text-align: left;
+}
+
+.edit-service-grid button.is-selected {
+  border-color: var(--accent);
+  background: #fff7f0;
+  color: #a64e18;
+}
+
+.edit-service-check {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #d1c7bf;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.edit-service-grid button.is-selected .edit-service-check {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.edit-service-grid button > span:last-child {
+  display: grid;
+  gap: 5px;
+}
+
+.edit-service-grid strong {
+  font-size: 0.75rem;
+}
+
+.edit-service-grid small {
+  color: #958b83;
+  font-size: 0.62rem;
+}
+
+.edit-time-options {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.edit-drawer__footer {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 32px;
+  border-top: 1px solid #e9e2dc;
+  background: #fff;
+}
+
+.edit-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.edit-summary span {
+  color: #8a817a;
+  font-size: 0.66rem;
+}
+
+.edit-summary strong {
+  color: #4d443e;
+  font-size: 0.76rem;
+}
+
+.edit-success {
+  min-height: 0;
+}
+
+.restriction-modal {
+  position: relative;
+  width: min(470px, 100%);
+  padding: 42px 38px 34px;
+  border-radius: 23px;
+  background: #fffdfb;
+  box-shadow: 0 30px 90px rgba(43, 27, 17, 0.25);
+  text-align: center;
+  animation: details-scale-in 220ms ease-out;
+}
+
+.restriction-modal__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+
+.restriction-modal__icon {
+  display: grid;
+  width: 70px;
+  height: 70px;
+  margin: 5px auto 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f8eadb;
+  color: #ad641e;
+}
+
+.restriction-modal__icon svg {
+  width: 31px;
+  height: 31px;
+}
+
+.restriction-modal__eyebrow {
+  color: #b26421;
+  font-size: 0.65rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.restriction-modal h2 {
+  margin: 8px 0 0;
+  font-family: "Iowan Old Style", Baskerville, serif;
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.restriction-modal > p {
+  margin: 13px auto 0;
+  color: #776e67;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.restriction-appointment,
+.restriction-phone {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 13px;
+}
+
+.restriction-appointment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #f7f2ee;
+  text-align: left;
+}
+
+.restriction-appointment > span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.restriction-appointment small,
+.restriction-phone span {
+  color: #8c837b;
+  font-size: 0.65rem;
+}
+
+.restriction-appointment strong {
+  color: #4a413b;
+  font-size: 0.76rem;
+}
+
+.restriction-phone {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #ead3c0;
+  background: #fff8f2;
+}
+
+.restriction-phone strong {
+  color: #a64f18;
+  font-size: 1.05rem;
+}
+
+.restriction-modal__button {
+  width: 100%;
+  justify-content: center;
+  margin-top: 20px;
+}
+
 @keyframes details-scale-in {
   from {
     opacity: 0;
@@ -1870,6 +2178,39 @@ a {
   .details-primary {
     flex: 1;
     justify-content: center;
+  }
+
+  .edit-drawer {
+    width: 100%;
+  }
+
+  .edit-drawer__body {
+    padding: 22px 20px 28px;
+  }
+
+  .edit-service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-time-options {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .edit-drawer__footer {
+    padding: 13px 20px;
+  }
+
+  .edit-summary {
+    display: none;
+  }
+
+  .edit-drawer__footer .booking-next {
+    width: 100%;
+  }
+
+  .restriction-modal {
+    width: calc(100% - 28px);
+    padding: 40px 24px 26px;
   }
 }
 
