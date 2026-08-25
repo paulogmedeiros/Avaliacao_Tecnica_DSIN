@@ -52,4 +52,15 @@ describe('AppointmentController', () => {
 
     expect(service.create.mock.calls[0]?.[0]).toBe('client-id');
   });
+
+  it('usa o usuário autenticado ao consultar disponibilidade', async () => {
+    service.findAvailability.mockResolvedValue({ slots: [] } as never);
+
+    await controller.findAvailability({ user: { sub: 'client-id' } } as never, {
+      date: '2030-08-20',
+      serviceIds: ['0198d000-0000-7000-8000-000000000001'],
+    });
+
+    expect(service.findAvailability.mock.calls[0]?.[0]).toBe('client-id');
+  });
 });

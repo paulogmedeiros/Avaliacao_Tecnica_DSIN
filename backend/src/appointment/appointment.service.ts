@@ -6,9 +6,14 @@ import {
 import { DayOfWeek, Prisma } from '../generated/prisma/client.js';
 import { generateId } from '../utils/generate.uuidv7.js';
 import { AppointmentRepository } from './appointment.repository.js';
+import {
+  getSalonDate,
+  getSalonDateTimeParts,
+  getSalonWeekRange,
+  salonDateTimeToUtc,
+} from './appointment-time.util.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 
-const BRAZIL_OFFSET_HOURS = -3;
 const SLOT_INTERVAL_MINUTES = 30;
 const DAY_BY_NUMBER: Partial<Record<number, DayOfWeek>> = {
   1: DayOfWeek.MONDAY,
@@ -30,7 +35,7 @@ interface SelectedService {
 export class AppointmentService {
   constructor(private readonly repository: AppointmentRepository) {}
 
-  async findAvailability(date: string, serviceIds: string[]) {
+  async findAvailability(clientId: string, date: string, serviceIds: string[]) {
     this.assertValidDate(date);
     const dayOfWeek = this.getDayOfWeek(date);
     const selectedServices = await this.getSelectedServices(serviceIds);
@@ -52,6 +57,14 @@ export class AppointmentService {
       dayEnd,
     );
     const now = new Date();
+    const week = getSalonWeekRange(date);
+    const existingAppointment =
+      await this.repository.findFirstUpcomingByClientInRange(
+        clientId,
+        week.start,
+        week.end,
+        now,
+      );
     const slots: Array<{ startAt: Date; endAt: Date }> = [];
 
     for (const period of periods) {
@@ -69,7 +82,19 @@ export class AppointmentService {
       }
     }
 
-    return { date, durationMinutes, slots };
+    const suggestedDate = existingAppointment
+      ? getSalonDate(existingAppointment.startAt)
+      : null;
+    const suggestion =
+      existingAppointment && suggestedDate !== null && suggestedDate !== date
+        ? {
+            date: suggestedDate,
+            appointmentId: existingAppointment.id,
+            message: `Você já possui um agendamento nesta semana. Deseja marcar os novos serviços para ${this.formatDate(suggestedDate)}?`,
+          }
+        : null;
+
+    return { date, durationMinutes, suggestion, slots };
   }
 
   async create(clientId: string, dto: CreateAppointmentDto) {
@@ -78,10 +103,10 @@ export class AppointmentService {
       throw new BadRequestException('O horário deve estar no futuro');
     }
 
-    const local = this.getBrazilParts(startAt);
+    const local = getSalonDateTimeParts(startAt);
     if (
       local.second !== 0 ||
-      local.millisecond !== 0 ||
+      startAt.getUTCMilliseconds() !== 0 ||
       local.minute % 30 !== 0
     ) {
       throw new BadRequestException(
@@ -180,30 +205,7 @@ export class AppointmentService {
   }
 
   private toInstant(date: string, hour: number, minute: number) {
-    const utcHour = hour - BRAZIL_OFFSET_HOURS;
-    return new Date(
-      Date.UTC(
-        Number(date.slice(0, 4)),
-        Number(date.slice(5, 7)) - 1,
-        Number(date.slice(8, 10)),
-        utcHour,
-        minute,
-      ),
-    );
-  }
-
-  private getBrazilParts(value: Date) {
-    const local = new Date(
-      value.getTime() + BRAZIL_OFFSET_HOURS * 60 * 60 * 1000,
-    );
-    return {
-      year: local.getUTCFullYear(),
-      month: local.getUTCMonth() + 1,
-      day: local.getUTCDate(),
-      minute: local.getUTCMinutes(),
-      second: local.getUTCSeconds(),
-      millisecond: local.getUTCMilliseconds(),
-    };
+    return salonDateTimeToUtc(date, hour, minute);
   }
 
   private assertValidDate(date: string) {
@@ -222,5 +224,10 @@ export class AppointmentService {
 
   private pad(value: number) {
     return String(value).padStart(2, '0');
+  }
+
+  private formatDate(date: string) {
+    const [year, month, day] = date.split('-');
+    return `${day}/${month}/${year}`;
   }
 }

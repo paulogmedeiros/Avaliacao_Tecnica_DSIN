@@ -16,8 +16,15 @@ export class AppointmentController {
   constructor(private readonly service: AppointmentService) {}
 
   @Get('availability')
-  async findAvailability(@Query() query: AvailabilityQueryDto) {
-    return await this.service.findAvailability(query.date, query.serviceIds);
+  async findAvailability(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: AvailabilityQueryDto,
+  ) {
+    return await this.service.findAvailability(
+      request.user.sub,
+      query.date,
+      query.serviceIds,
+    );
   }
 
   @Post()

@@ -37,6 +37,7 @@ describe('AppointmentService', () => {
       findActiveServicesByIds: jest.fn(),
       findBusinessHour: jest.fn(),
       findAppointmentsBetween: jest.fn(),
+      findFirstUpcomingByClientInRange: jest.fn(),
       createIfAvailable: jest.fn(),
     } as unknown as jest.Mocked<AppointmentRepository>;
     service = new AppointmentService(repository);
@@ -47,10 +48,11 @@ describe('AppointmentService', () => {
     );
     repository.findBusinessHour.mockResolvedValue(tuesdayHours as never);
     repository.findAppointmentsBetween.mockResolvedValue([] as never);
+    repository.findFirstUpcomingByClientInRange.mockResolvedValue(null);
   });
 
   it('lista inícios de 30 em 30 minutos respeitando uma duração de 45 minutos', async () => {
-    const result = await service.findAvailability('2030-08-20', [
+    const result = await service.findAvailability('client-id', '2030-08-20', [
       services[0].id,
     ]);
 
@@ -77,7 +79,7 @@ describe('AppointmentService', () => {
       },
     ] as never);
 
-    const result = await service.findAvailability('2030-08-20', [
+    const result = await service.findAvailability('client-id', '2030-08-20', [
       services[0].id,
     ]);
 
@@ -91,14 +93,48 @@ describe('AppointmentService', () => {
 
   it('rejeita domingo por não possuir horário de funcionamento', async () => {
     await expect(
-      service.findAvailability('2030-08-18', [services[0].id]),
+      service.findAvailability('client-id', '2030-08-18', [services[0].id]),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejeita serviço repetido', async () => {
     await expect(
-      service.findAvailability('2030-08-20', [services[0].id, services[0].id]),
+      service.findAvailability('client-id', '2030-08-20', [
+        services[0].id,
+        services[0].id,
+      ]),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('sugere a primeira agenda futura do cliente na mesma semana', async () => {
+    repository.findFirstUpcomingByClientInRange.mockResolvedValue({
+      id: 'appointment-id',
+      startAt: new Date('2030-08-20T14:00:00.000Z'),
+    });
+
+    const result = await service.findAvailability('client-id', '2030-08-22', [
+      services[0].id,
+    ]);
+
+    expect(result.suggestion).toEqual({
+      date: '2030-08-20',
+      appointmentId: 'appointment-id',
+      message:
+        'Você já possui um agendamento nesta semana. Deseja marcar os novos serviços para 20/08/2030?',
+    });
+  });
+
+  it('não sugere quando a data consultada já é a data da agenda', async () => {
+    repository.findFirstUpcomingByClientInRange.mockResolvedValue({
+      id: 'appointment-id',
+      startAt: new Date('2030-08-20T14:00:00.000Z'),
+    });
+
+    const result = await service.findAvailability('client-id', '2030-08-20', [
+      services[0].id,
+    ]);
+
+    expect(result.suggestion).toBeNull();
   });
 
   it('cria a agenda com duração total, ordem e snapshots dos serviços', async () => {

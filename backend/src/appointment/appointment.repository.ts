@@ -47,6 +47,26 @@ export class AppointmentRepository {
     });
   }
 
+  async findFirstUpcomingByClientInRange(
+    clientId: string,
+    startAt: Date,
+    endAt: Date,
+    now: Date,
+  ) {
+    const effectiveStart = startAt > now ? startAt : now;
+    return await this.prisma.appointment.findFirst({
+      where: {
+        clientId,
+        status: {
+          in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED],
+        },
+        startAt: { gte: effectiveStart, lt: endAt },
+      },
+      select: { id: true, startAt: true },
+      orderBy: { startAt: 'asc' },
+    });
+  }
+
   async createIfAvailable(data: AppointmentCreationData) {
     try {
       return await this.prisma.$transaction(
