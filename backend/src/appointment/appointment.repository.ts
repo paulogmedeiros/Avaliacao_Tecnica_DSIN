@@ -6,6 +6,16 @@ import {
 } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+const appointmentDetailsInclude = {
+  client: {
+    select: { id: true, name: true, email: true, phone: true, role: true },
+  },
+  services: {
+    orderBy: { sequence: 'asc' as const },
+    include: { service: true },
+  },
+} satisfies Prisma.AppointmentInclude;
+
 export interface AppointmentCreationData {
   id: string;
   clientId: string;
@@ -64,6 +74,38 @@ export class AppointmentRepository {
       },
       select: { id: true, startAt: true },
       orderBy: { startAt: 'asc' },
+    });
+  }
+
+  async findHistoryByClient(clientId: string, startAt?: Date, endAt?: Date) {
+    const dateFilter =
+      startAt || endAt
+        ? {
+            startAt: {
+              ...(startAt ? { gte: startAt } : {}),
+              ...(endAt ? { lt: endAt } : {}),
+            },
+          }
+        : {};
+
+    return await this.prisma.appointment.findMany({
+      where: { clientId, ...dateFilter },
+      include: appointmentDetailsInclude,
+      orderBy: { startAt: 'desc' },
+    });
+  }
+
+  async findAll() {
+    return await this.prisma.appointment.findMany({
+      include: appointmentDetailsInclude,
+      orderBy: { startAt: 'asc' },
+    });
+  }
+
+  async findById(id: string) {
+    return await this.prisma.appointment.findUnique({
+      where: { id },
+      include: appointmentDetailsInclude,
     });
   }
 

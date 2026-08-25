@@ -2,9 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { DayOfWeek, Prisma } from '../generated/prisma/client.js';
 import { generateId } from '../utils/generate.uuidv7.js';
+import { UserRole } from '../user/enum/role.user.js';
 import { AppointmentRepository } from './appointment.repository.js';
 import {
   getSalonDate,
@@ -13,6 +15,7 @@ import {
   salonDateTimeToUtc,
 } from './appointment-time.util.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
+import { HistoryQueryDto } from './dto/history-query.dto.js';
 
 const SLOT_INTERVAL_MINUTES = 30;
 const DAY_BY_NUMBER: Partial<Record<number, DayOfWeek>> = {
@@ -159,6 +162,29 @@ export class AppointmentService {
     return result;
   }
 
+  async findHistory(clientId: string, query: HistoryQueryDto) {
+    const { startAt, endAt } = this.getHistoryPeriod(query);
+    if (startAt && endAt && startAt >= endAt) {
+      throw new BadRequestException('O período informado é inválido');
+    }
+    return await this.repository.findHistoryByClient(clientId, startAt, endAt);
+  }
+
+  async findAll() {
+    return await this.repository.findAll();
+  }
+
+  async findById(id: string, userId: string, role: UserRole) {
+    const appointment = await this.repository.findById(id);
+    if (
+      !appointment ||
+      (role !== UserRole.ADMIN && appointment.clientId !== userId)
+    ) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+    return appointment;
+  }
+
   private async getSelectedServices(serviceIds: string[]) {
     if (new Set(serviceIds).size !== serviceIds.length) {
       throw new BadRequestException('Não repita serviços na mesma agenda');
@@ -216,6 +242,22 @@ export class AppointmentService {
     if (parsed.toISOString().slice(0, 10) !== date) {
       throw new BadRequestException('Data inválida');
     }
+  }
+
+  private getHistoryPeriod(query: HistoryQueryDto) {
+    if (query.startDate) this.assertValidDate(query.startDate);
+    if (query.endDate) this.assertValidDate(query.endDate);
+
+    const startAt = query.startDate
+      ? salonDateTimeToUtc(query.startDate, 0, 0)
+      : undefined;
+    let endAt: Date | undefined;
+    if (query.endDate) {
+      const nextDay = new Date(`${query.endDate}T12:00:00.000Z`);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      endAt = salonDateTimeToUtc(nextDay.toISOString().slice(0, 10), 0, 0);
+    }
+    return { startAt, endAt };
   }
 
   private addMinutes(value: Date, minutes: number) {

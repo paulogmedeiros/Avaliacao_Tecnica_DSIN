@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 import { AppointmentRepository } from './appointment.repository.js';
 import { AppointmentService } from './appointment.service.js';
+import { UserRole } from '../user/enum/role.user.js';
 
 const services = [
   {
@@ -38,6 +39,9 @@ describe('AppointmentService', () => {
       findBusinessHour: jest.fn(),
       findAppointmentsBetween: jest.fn(),
       findFirstUpcomingByClientInRange: jest.fn(),
+      findHistoryByClient: jest.fn(),
+      findAll: jest.fn(),
+      findById: jest.fn(),
       createIfAvailable: jest.fn(),
     } as unknown as jest.Mocked<AppointmentRepository>;
     service = new AppointmentService(repository);
@@ -135,6 +139,70 @@ describe('AppointmentService', () => {
     ]);
 
     expect(result.suggestion).toBeNull();
+  });
+
+  it('consulta o histórico do cliente usando o período local completo', async () => {
+    repository.findHistoryByClient.mockResolvedValue([] as never);
+
+    await service.findHistory('client-id', {
+      startDate: '2030-08-20',
+      endDate: '2030-08-22',
+    });
+
+    expect(repository.findHistoryByClient.mock.calls[0]).toEqual([
+      'client-id',
+      new Date('2030-08-20T03:00:00.000Z'),
+      new Date('2030-08-23T03:00:00.000Z'),
+    ]);
+  });
+
+  it('rejeita período de histórico invertido', async () => {
+    await expect(
+      service.findHistory('client-id', {
+        startDate: '2030-08-22',
+        endDate: '2030-08-20',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('delega a listagem completa de agendas', async () => {
+    repository.findAll.mockResolvedValue([{ id: 'appointment-id' }] as never);
+    await expect(service.findAll()).resolves.toEqual([
+      { id: 'appointment-id' },
+    ]);
+  });
+
+  it('permite que o cliente detalhe a própria agenda', async () => {
+    repository.findById.mockResolvedValue({
+      id: 'appointment-id',
+      clientId: 'client-id',
+    } as never);
+
+    await expect(
+      service.findById('appointment-id', 'client-id', UserRole.CLIENT),
+    ).resolves.toMatchObject({ id: 'appointment-id' });
+  });
+
+  it('oculta do cliente uma agenda pertencente a outra pessoa', async () => {
+    repository.findById.mockResolvedValue({
+      id: 'appointment-id',
+      clientId: 'other-client',
+    } as never);
+
+    await expect(
+      service.findById('appointment-id', 'client-id', UserRole.CLIENT),
+    ).rejects.toThrow('Agendamento não encontrado');
+  });
+
+  it('permite que o administrador detalhe qualquer agenda', async () => {
+    repository.findById.mockResolvedValue({
+      id: 'appointment-id',
+      clientId: 'other-client',
+    } as never);
+
+    await expect(
+      service.findById('appointment-id', 'admin-id', UserRole.ADMIN),
+    ).resolves.toMatchObject({ id: 'appointment-id' });
   });
 
   it('cria a agenda com duração total, ordem e snapshots dos serviços', async () => {

@@ -2,6 +2,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { jest } from '@jest/globals';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import { AvailabilityQueryDto } from './dto/availability-query.dto.js';
+import { HistoryQueryDto } from './dto/history-query.dto.js';
+import { ROLES_KEY } from '../auth/decorators/roles.decorator.js';
+import { UserRole } from '../user/enum/role.user.js';
 import { AppointmentController } from './appointment.controller.js';
 import { AppointmentService } from './appointment.service.js';
 
@@ -38,6 +41,9 @@ describe('Appointment DTOs', () => {
 describe('AppointmentController', () => {
   const service = {
     findAvailability: jest.fn(),
+    findHistory: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
   } as unknown as jest.Mocked<AppointmentService>;
   const controller = new AppointmentController(service);
@@ -62,5 +68,63 @@ describe('AppointmentController', () => {
     });
 
     expect(service.findAvailability.mock.calls[0]?.[0]).toBe('client-id');
+  });
+
+  it('usa o usuário autenticado ao consultar o histórico', async () => {
+    service.findHistory.mockResolvedValue([] as never);
+
+    await controller.findHistory(
+      { user: { sub: 'client-id', role: UserRole.CLIENT } } as never,
+      { startDate: '2030-08-20' },
+    );
+
+    expect(service.findHistory.mock.calls[0]).toEqual([
+      'client-id',
+      { startDate: '2030-08-20' },
+    ]);
+  });
+
+  it('exige ADMIN para listar todas as agendas', () => {
+    const method = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(controller),
+      'findAll',
+    )?.value as object;
+    expect(Reflect.getMetadata(ROLES_KEY, method)).toEqual([UserRole.ADMIN]);
+  });
+
+  it('envia identidade e perfil ao detalhar uma agenda', async () => {
+    service.findById.mockResolvedValue({ id: 'appointment-id' } as never);
+
+    await controller.findById('appointment-id', {
+      user: { sub: 'client-id', role: UserRole.CLIENT },
+    } as never);
+
+    expect(service.findById.mock.calls[0]).toEqual([
+      'appointment-id',
+      'client-id',
+      UserRole.CLIENT,
+    ]);
+  });
+});
+
+describe('HistoryQueryDto', () => {
+  const pipe = new ValidationPipe({ transform: true });
+
+  it('aceita um período no formato esperado', async () => {
+    await expect(
+      pipe.transform(
+        { startDate: '2030-08-01', endDate: '2030-08-31' },
+        { type: 'query', metatype: HistoryQueryDto },
+      ),
+    ).resolves.toMatchObject({ startDate: '2030-08-01' });
+  });
+
+  it('rejeita data em formato brasileiro', async () => {
+    await expect(
+      pipe.transform(
+        { startDate: '01/08/2030' },
+        { type: 'query', metatype: HistoryQueryDto },
+      ),
+    ).rejects.toThrow();
   });
 });
