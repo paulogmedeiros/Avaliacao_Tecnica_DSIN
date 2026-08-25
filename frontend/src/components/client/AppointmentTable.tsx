@@ -1,57 +1,13 @@
-type AppointmentStatus = 'Pendente' | 'Confirmado' | 'Concluído' | 'Cancelado'
-
-type Appointment = {
-  id: string
-  date: string
-  time: string
-  services: string[]
-  duration: string
-  status: AppointmentStatus
-}
-
-const appointments: Appointment[] = [
-  {
-    id: '#AG-1048',
-    date: '29 ago. 2026',
-    time: '09:30',
-    services: ['Corte feminino', 'Hidratação'],
-    duration: '1h 45min',
-    status: 'Confirmado',
-  },
-  {
-    id: '#AG-1012',
-    date: '15 ago. 2026',
-    time: '13:30',
-    services: ['Coloração'],
-    duration: '2h',
-    status: 'Concluído',
-  },
-  {
-    id: '#AG-0987',
-    date: '01 ago. 2026',
-    time: '10:00',
-    services: ['Escova', 'Manicure'],
-    duration: '1h 30min',
-    status: 'Concluído',
-  },
-  {
-    id: '#AG-0964',
-    date: '18 jul. 2026',
-    time: '08:30',
-    services: ['Corte feminino'],
-    duration: '45min',
-    status: 'Cancelado',
-  },
-]
+import { appointments, type AppointmentStatus } from './appointmentsData'
 
 function StatusBadge({ status }: { status: AppointmentStatus }) {
   return <span className={`status-badge status-badge--${status.toLowerCase().replace('í', 'i')}`}>{status}</span>
 }
 
-function RowActions({ canChange }: { canChange: boolean }) {
+function RowActions({ canChange, onViewDetails }: { canChange: boolean; onViewDetails: () => void }) {
   return (
     <div className="appointment-actions">
-      <button className="icon-button" type="button" aria-label="Ver detalhes" title="Ver detalhes">
+      <button className="icon-button" type="button" aria-label="Ver detalhes" title="Ver detalhes" onClick={onViewDetails}>
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
           <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
           <circle cx="12" cy="12" r="2.5" />
@@ -71,7 +27,7 @@ function RowActions({ canChange }: { canChange: boolean }) {
   )
 }
 
-export function AppointmentTable() {
+export function AppointmentTable({ onViewDetails }: { onViewDetails: (appointmentId: string) => void }) {
   return (
     <div className="appointments-table-wrap">
       <table className="appointments-table">
@@ -96,12 +52,12 @@ export function AppointmentTable() {
                 </td>
                 <td data-label="Serviços">
                   <div className="service-list">
-                    {appointment.services.map((service) => <span key={service}>{service}</span>)}
+                    {appointment.services.map((service) => <span key={service.id}>{service.name}</span>)}
                   </div>
                 </td>
                 <td data-label="Duração">{appointment.duration}</td>
                 <td data-label="Status"><StatusBadge status={appointment.status} /></td>
-                <td className="appointments-table__actions"><RowActions canChange={canChange} /></td>
+                <td className="appointments-table__actions"><RowActions canChange={canChange} onViewDetails={() => onViewDetails(appointment.id)} /></td>
               </tr>
             )
           })}

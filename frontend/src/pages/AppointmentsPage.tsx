@@ -1,10 +1,17 @@
 import { useState } from 'react'
+import { AppointmentDetailsModal } from '../components/client/AppointmentDetailsModal'
 import { AppointmentTable } from '../components/client/AppointmentTable'
+import { getAppointmentById } from '../components/client/appointmentDetails.js'
+import { appointments } from '../components/client/appointmentsData'
 import { ClientHeader } from '../components/client/ClientHeader'
 import { NewAppointmentDrawer } from '../components/client/NewAppointmentDrawer'
 
 export function AppointmentsPage() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
+  const selectedAppointment = selectedAppointmentId
+    ? getAppointmentById(appointments, selectedAppointmentId)
+    : null
 
   return (
     <div className="client-page">
@@ -52,7 +59,7 @@ export function AppointmentsPage() {
             </form>
           </div>
 
-          <AppointmentTable />
+          <AppointmentTable onViewDetails={setSelectedAppointmentId} />
 
           <footer className="appointments-footer">
             <span>Mostrando 1–4 de 4</span>
@@ -66,6 +73,7 @@ export function AppointmentsPage() {
       </main>
 
       <NewAppointmentDrawer isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
+      <AppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} />
     </div>
   )
 }
