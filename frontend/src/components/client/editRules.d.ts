@@ -5,3 +5,4 @@ export type EditAvailability = {
 }
 
 export function getEditAvailability(scheduledAt: string, now: string, status: string): EditAvailability
+export function getCancellationAvailability(scheduledAt: string, now: string, status: string): EditAvailability

@@ -11,11 +11,13 @@ function RowActions({
   isShortNotice,
   onViewDetails,
   onEdit,
+  onCancel,
 }: {
   isTerminal: boolean
   isShortNotice: boolean
   onViewDetails: () => void
   onEdit: () => void
+  onCancel: () => void
 }) {
   return (
     <div className="appointment-actions">
@@ -37,7 +39,14 @@ function RowActions({
           <path d="m14.5 5.5 4 4M4 20l4.2-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z" />
         </svg>
       </button>
-      <button className="icon-button icon-button--danger" type="button" aria-label="Cancelar agendamento" title="Cancelar" disabled={isTerminal || isShortNotice}>
+      <button
+        className={`icon-button icon-button--danger${isShortNotice ? ' icon-button--cancel-locked' : ''}`}
+        type="button"
+        aria-label={isShortNotice ? 'Cancelamento disponível por telefone' : 'Cancelar agendamento'}
+        title={isShortNotice ? 'Menos de 48 horas: cancelamento por telefone' : 'Cancelar'}
+        disabled={isTerminal}
+        onClick={onCancel}
+      >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
           <path d="m7 7 10 10M17 7 7 17" />
         </svg>
@@ -49,9 +58,11 @@ function RowActions({
 export function AppointmentTable({
   onViewDetails,
   onEditAppointment,
+  onCancelAppointment,
 }: {
   onViewDetails: (appointmentId: string) => void
   onEditAppointment: (appointmentId: string) => void
+  onCancelAppointment: (appointmentId: string) => void
 }) {
   return (
     <div className="appointments-table-wrap">
@@ -90,6 +101,7 @@ export function AppointmentTable({
                     isShortNotice={isShortNotice}
                     onViewDetails={() => onViewDetails(appointment.id)}
                     onEdit={() => onEditAppointment(appointment.id)}
+                    onCancel={() => onCancelAppointment(appointment.id)}
                   />
                 </td>
               </tr>

@@ -4,6 +4,7 @@ type AppointmentDetailsModalProps = {
   appointment: Appointment | null
   onClose: () => void
   onEdit: (appointmentId: string) => void
+  onCancel: (appointmentId: string) => void
 }
 
 function formatCurrency(value: number) {
@@ -14,7 +15,7 @@ function statusClass(status: string) {
   return status.toLowerCase().replace('í', 'i')
 }
 
-export function AppointmentDetailsModal({ appointment, onClose, onEdit }: AppointmentDetailsModalProps) {
+export function AppointmentDetailsModal({ appointment, onClose, onEdit, onCancel }: AppointmentDetailsModalProps) {
   if (!appointment) return null
 
   const canChange = appointment.status === 'Pendente' || appointment.status === 'Confirmado'
@@ -97,10 +98,13 @@ export function AppointmentDetailsModal({ appointment, onClose, onEdit }: Appoin
         <footer className="details-modal__footer">
           <button className="details-secondary" type="button" onClick={onClose}>Fechar</button>
           {canChange ? (
-            <button className="details-primary" type="button" onClick={() => onEdit(appointment.id)}>
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m14.5 5.5 4 4M4 20l4.2-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z" /></svg>
-              Editar agendamento
-            </button>
+            <>
+              <button className="details-cancel" type="button" onClick={() => onCancel(appointment.id)}>Cancelar</button>
+              <button className="details-primary" type="button" onClick={() => onEdit(appointment.id)}>
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m14.5 5.5 4 4M4 20l4.2-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z" /></svg>
+                Editar agendamento
+              </button>
+            </>
           ) : null}
         </footer>
       </section>

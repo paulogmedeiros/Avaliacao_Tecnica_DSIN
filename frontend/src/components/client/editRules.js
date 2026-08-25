@@ -14,3 +14,7 @@ export function getEditAvailability(scheduledAt, now, status) {
 
   return { allowed: true, reason: null, hoursRemaining }
 }
+
+export function getCancellationAvailability(scheduledAt, now, status) {
+  return getEditAvailability(scheduledAt, now, status)
+}

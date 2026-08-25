@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { getEditAvailability } from './editRules.js'
+import { getCancellationAvailability, getEditAvailability } from './editRules.js'
 
 describe('client appointment edit rule', () => {
   const now = '2026-08-25T09:30:00-03:00'
@@ -27,5 +27,17 @@ describe('client appointment edit rule', () => {
       reason: 'terminal_status',
       hoursRemaining: 384,
     })
+  })
+})
+
+describe('client appointment cancellation rule', () => {
+  const now = '2026-08-25T09:30:00-03:00'
+
+  it('allows cancellation at exactly 48 hours', () => {
+    assert.equal(getCancellationAvailability('2026-08-27T09:30:00-03:00', now, 'Confirmado').allowed, true)
+  })
+
+  it('requires phone contact below 48 hours', () => {
+    assert.equal(getCancellationAvailability('2026-08-27T09:29:00-03:00', now, 'Confirmado').reason, 'short_notice')
   })
 })

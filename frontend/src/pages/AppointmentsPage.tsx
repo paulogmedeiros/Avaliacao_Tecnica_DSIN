@@ -3,10 +3,11 @@ import { AppointmentDetailsModal } from '../components/client/AppointmentDetails
 import { AppointmentTable } from '../components/client/AppointmentTable'
 import { getAppointmentById } from '../components/client/appointmentDetails.js'
 import { appointments, prototypeNow } from '../components/client/appointmentsData'
+import { CancelAppointmentModal } from '../components/client/CancelAppointmentModal'
 import { ClientHeader } from '../components/client/ClientHeader'
 import { EditAppointmentDrawer } from '../components/client/EditAppointmentDrawer'
 import { EditRestrictionModal } from '../components/client/EditRestrictionModal'
-import { getEditAvailability } from '../components/client/editRules.js'
+import { getCancellationAvailability, getEditAvailability } from '../components/client/editRules.js'
 import { NewAppointmentDrawer } from '../components/client/NewAppointmentDrawer'
 
 export function AppointmentsPage() {
@@ -14,11 +15,14 @@ export function AppointmentsPage() {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
   const [restrictedAppointmentId, setRestrictedAppointmentId] = useState<string | null>(null)
+  const [restrictionAction, setRestrictionAction] = useState<'edit' | 'cancel'>('edit')
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null)
   const selectedAppointment = selectedAppointmentId
     ? getAppointmentById(appointments, selectedAppointmentId)
     : null
   const editingAppointment = editingAppointmentId ? getAppointmentById(appointments, editingAppointmentId) : null
   const restrictedAppointment = restrictedAppointmentId ? getAppointmentById(appointments, restrictedAppointmentId) : null
+  const cancellingAppointment = cancellingAppointmentId ? getAppointmentById(appointments, cancellingAppointmentId) : null
 
   function requestAppointmentEdit(appointmentId: string) {
     const appointment = getAppointmentById(appointments, appointmentId)
@@ -32,7 +36,28 @@ export function AppointmentsPage() {
       return
     }
 
-    if (availability.reason === 'short_notice') setRestrictedAppointmentId(appointmentId)
+    if (availability.reason === 'short_notice') {
+      setRestrictionAction('edit')
+      setRestrictedAppointmentId(appointmentId)
+    }
+  }
+
+  function requestAppointmentCancellation(appointmentId: string) {
+    const appointment = getAppointmentById(appointments, appointmentId)
+    if (!appointment) return
+
+    const availability = getCancellationAvailability(appointment.scheduledAt, prototypeNow, appointment.status)
+    setSelectedAppointmentId(null)
+
+    if (availability.allowed) {
+      setCancellingAppointmentId(appointmentId)
+      return
+    }
+
+    if (availability.reason === 'short_notice') {
+      setRestrictionAction('cancel')
+      setRestrictedAppointmentId(appointmentId)
+    }
   }
 
   return (
@@ -81,7 +106,11 @@ export function AppointmentsPage() {
             </form>
           </div>
 
-          <AppointmentTable onViewDetails={setSelectedAppointmentId} onEditAppointment={requestAppointmentEdit} />
+          <AppointmentTable
+            onViewDetails={setSelectedAppointmentId}
+            onEditAppointment={requestAppointmentEdit}
+            onCancelAppointment={requestAppointmentCancellation}
+          />
 
           <footer className="appointments-footer">
             <span>Mostrando 1–5 de 5</span>
@@ -95,9 +124,15 @@ export function AppointmentsPage() {
       </main>
 
       <NewAppointmentDrawer isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
-      <AppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onEdit={requestAppointmentEdit} />
+      <AppointmentDetailsModal
+        appointment={selectedAppointment}
+        onClose={() => setSelectedAppointmentId(null)}
+        onEdit={requestAppointmentEdit}
+        onCancel={requestAppointmentCancellation}
+      />
       <EditAppointmentDrawer key={editingAppointmentId ?? 'no-edit'} appointment={editingAppointment} onClose={() => setEditingAppointmentId(null)} />
-      <EditRestrictionModal appointment={restrictedAppointment} onClose={() => setRestrictedAppointmentId(null)} />
+      <EditRestrictionModal appointment={restrictedAppointment} action={restrictionAction} onClose={() => setRestrictedAppointmentId(null)} />
+      <CancelAppointmentModal key={cancellingAppointmentId ?? 'no-cancel'} appointment={cancellingAppointment} onClose={() => setCancellingAppointmentId(null)} />
     </div>
   )
 }
