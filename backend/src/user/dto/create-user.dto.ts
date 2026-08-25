@@ -5,6 +5,7 @@ import {
     IsString,
     Length,
     Matches,
+    MaxLength,
 } from 'class-validator';
 import { UserRole } from '../enum/role.user.js';
 import { ApiProperty } from '@nestjs/swagger';
@@ -48,12 +49,16 @@ export class CreateUserDto {
         example: 'StrongPass123!',
         type: String,
     })
-    @IsString({
-        message: 'A senha deve ser um texto.',
-    })
-    @Length(6, 255, {
-        message: 'A senha deve ter entre 6 e 255 caracteres.',
-    })
+    @IsString({ message: 'A senha deve ser uma string' })
+    @IsNotEmpty({ message: 'A senha é obrigatória' })
+    @MaxLength(255, { message: 'A senha deve ter no máximo 255 caracteres' })
+    @Matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+        {
+            message:
+                'A senha deve ter pelo menos 8 caracteres, incluindo uma letra minúscula, uma maiúscula, um número e um símbolo especial (@$!%*?&)',
+        },
+    )
     password!: string;
 
     @ApiProperty({

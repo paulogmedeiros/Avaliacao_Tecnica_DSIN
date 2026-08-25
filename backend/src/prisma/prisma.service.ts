@@ -19,6 +19,7 @@ export class PrismaService extends PrismaClient {
       user: decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
       database: url.pathname.slice(1),
+      timezone: 'UTC',
     });
 
     super({
