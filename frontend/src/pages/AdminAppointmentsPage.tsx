@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { AdminAppointmentsTable } from '../components/admin/AdminAppointmentsTable'
 import { AdminAppointmentDetailsModal } from '../components/admin/AdminAppointmentDetailsModal'
 import { AdminEditAppointmentDrawer } from '../components/admin/AdminEditAppointmentDrawer'
+import { AdminConfirmAppointmentModal } from '../components/admin/AdminConfirmAppointmentModal'
 import type { AdminAppointmentAction } from '../components/admin/adminAppointmentActions.js'
 import { filterAdminAppointments } from '../components/admin/adminAppointmentFilter.js'
 import { adminAppointments, type AdminAppointment } from '../components/admin/adminAppointmentsData'
+import { confirmAdminAppointment } from '../components/admin/confirmAdminAppointment.js'
 
 const initialFilters = { search: '', startDate: '', endDate: '', status: '' }
 
@@ -13,10 +15,12 @@ export function AdminAppointmentsPage() {
   const [actionNotice, setActionNotice] = useState<string | null>(null)
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
+  const [confirmingAppointmentId, setConfirmingAppointmentId] = useState<string | null>(null)
   const [appointmentsList, setAppointmentsList] = useState(adminAppointments)
   const filteredAppointments = filterAdminAppointments(appointmentsList, filters)
   const selectedAppointment = appointmentsList.find((appointment) => appointment.id === selectedAppointmentId) ?? null
   const editingAppointment = appointmentsList.find((appointment) => appointment.id === editingAppointmentId) ?? null
+  const confirmingAppointment = appointmentsList.find((appointment) => appointment.id === confirmingAppointmentId) ?? null
 
   function setFilter(name: keyof typeof initialFilters, value: string) {
     setFilters((current) => ({ ...current, [name]: value }))
@@ -35,14 +39,25 @@ export function AdminAppointmentsPage() {
       setEditingAppointmentId(appointmentId)
       return
     }
+    if (action === 'confirm') {
+      setActionNotice(null)
+      setSelectedAppointmentId(null)
+      setConfirmingAppointmentId(appointmentId)
+      return
+    }
 
-    const labels = { confirm: 'Confirmação', cancel: 'Cancelamento' }
+    const labels = { cancel: 'Cancelamento' }
     setSelectedAppointmentId(null)
     setActionNotice(`${labels[action]} do agendamento ${appointmentId} será disponibilizada na próxima etapa.`)
   }
 
   function saveEditedAppointment(updatedAppointment: AdminAppointment) {
     setAppointmentsList((current) => current.map((appointment) => appointment.id === updatedAppointment.id ? updatedAppointment : appointment))
+  }
+
+  function confirmAppointment(appointment: AdminAppointment) {
+    const confirmedAppointment = confirmAdminAppointment(appointment)
+    setAppointmentsList((current) => current.map((item) => item.id === confirmedAppointment.id ? confirmedAppointment : item))
   }
 
   return (
@@ -75,6 +90,7 @@ export function AdminAppointmentsPage() {
 
       <AdminAppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onAction={handleAppointmentAction} />
       <AdminEditAppointmentDrawer key={editingAppointmentId ?? 'no-admin-edit'} appointment={editingAppointment} onClose={() => setEditingAppointmentId(null)} onSave={saveEditedAppointment} />
+      <AdminConfirmAppointmentModal key={confirmingAppointmentId ?? 'no-admin-confirm'} appointment={confirmingAppointment} onClose={() => setConfirmingAppointmentId(null)} onConfirm={confirmAppointment} />
     </div>
   )
 }
