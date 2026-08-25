@@ -3097,3 +3097,243 @@ a {
     right: -100px;
   }
 }
+
+/* Relatório semanal administrativo */
+.weekly-report {
+  margin-top: 34px;
+}
+
+.weekly-report__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.weekly-report__toolbar h2 {
+  margin: 0;
+  color: #2b2622;
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 500;
+}
+
+.weekly-report__toolbar p {
+  margin: 6px 0 0;
+  color: #7d736b;
+  font-size: 0.84rem;
+  text-transform: capitalize;
+}
+
+.week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px;
+  border: 1px solid #ded5ce;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.week-navigation button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: #625850;
+  background: transparent;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.week-navigation button:hover {
+  color: #a9511c;
+  background: #f7ece4;
+}
+
+.week-navigation button:focus-visible {
+  outline: 3px solid rgb(194 100 33 / 24%);
+}
+
+.week-navigation svg {
+  width: 20px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.week-navigation span {
+  min-width: 98px;
+  color: #4c443e;
+  font-size: 0.75rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.weekly-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.weekly-metric {
+  min-width: 0;
+  min-height: 196px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px;
+  border: 1px solid #e2d9d1;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(83 54 33 / 5%);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.weekly-metric:hover {
+  border-color: #d4c4b8;
+  transform: translateY(-2px);
+  box-shadow: 0 17px 34px rgb(83 54 33 / 8%);
+}
+
+.weekly-metric__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  color: #7b6f66;
+  background: #f3efeb;
+}
+
+.weekly-metric__icon svg {
+  width: 21px;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.weekly-metric > div {
+  display: grid;
+}
+
+.weekly-metric__label {
+  margin-bottom: 7px;
+  color: #766c64;
+  font-size: 0.76rem;
+  font-weight: 730;
+}
+
+.weekly-metric strong {
+  overflow: hidden;
+  color: #28231f;
+  font-family: Georgia, serif;
+  font-size: clamp(1.75rem, 2.3vw, 2.35rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekly-metric small {
+  margin-top: 8px;
+  color: #9b9189;
+  font-size: 0.68rem;
+}
+
+.weekly-metric--accent {
+  color: #fff;
+  border-color: #a84d17;
+  background: linear-gradient(145deg, #b9581d, #d17b40);
+  box-shadow: 0 18px 36px rgb(159 73 24 / 18%);
+}
+
+.weekly-metric--accent .weekly-metric__icon {
+  color: #fff;
+  background: rgb(255 255 255 / 15%);
+}
+
+.weekly-metric--accent .weekly-metric__label,
+.weekly-metric--accent small {
+  color: rgb(255 255 255 / 74%);
+}
+
+.weekly-metric--accent strong {
+  color: #fff;
+}
+
+.weekly-metric--success .weekly-metric__icon {
+  color: #3d7857;
+  background: #e9f4ed;
+}
+
+.weekly-metric--danger .weekly-metric__icon {
+  color: #a84e42;
+  background: #faece9;
+}
+
+@media (max-width: 1160px) {
+  .weekly-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weekly-metric {
+    min-height: 176px;
+  }
+}
+
+@media (max-width: 600px) {
+  .weekly-report__toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .week-navigation {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .week-navigation span {
+    flex: 1;
+  }
+
+  .weekly-metrics {
+    gap: 11px;
+  }
+
+  .weekly-metric {
+    min-height: 164px;
+    padding: 17px;
+    border-radius: 17px;
+  }
+
+  .weekly-metric__icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .weekly-metric strong {
+    font-size: clamp(1.45rem, 7vw, 1.9rem);
+  }
+
+  .weekly-metric small {
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 390px) {
+  .weekly-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .weekly-metric {
+    min-height: 150px;
+  }
+}
