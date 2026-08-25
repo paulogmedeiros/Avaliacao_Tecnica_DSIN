@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DayOfWeek, Prisma } from '../generated/prisma/client.js';
+import {
+  AppointmentStatus,
+  DayOfWeek,
+  Prisma,
+} from '../generated/prisma/client.js';
 import { generateId } from '../utils/generate.uuidv7.js';
 import { UserRole } from '../user/enum/role.user.js';
 import { AppointmentRepository } from './appointment.repository.js';
@@ -16,8 +20,14 @@ import {
 } from './appointment-time.util.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import { HistoryQueryDto } from './dto/history-query.dto.js';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
 
 const SLOT_INTERVAL_MINUTES = 30;
+const CLIENT_UPDATE_LIMIT_MS = 48 * 60 * 60 * 1000;
+const ACTIVE_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.PENDING,
+  AppointmentStatus.CONFIRMED,
+];
 const DAY_BY_NUMBER: Partial<Record<number, DayOfWeek>> = {
   1: DayOfWeek.MONDAY,
   2: DayOfWeek.TUESDAY,
@@ -185,6 +195,85 @@ export class AppointmentService {
     return appointment;
   }
 
+  async updateClient(id: string, clientId: string, dto: UpdateAppointmentDto) {
+    const appointment = await this.getEditableAppointment(id);
+    if (appointment.clientId !== clientId) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+    this.assertClientDeadline(appointment.startAt);
+    return await this.updateSchedule(appointment, dto);
+  }
+
+  async updateAdmin(id: string, dto: UpdateAppointmentDto) {
+    const appointment = await this.getEditableAppointment(id);
+    return await this.updateSchedule(appointment, dto);
+  }
+
+  async cancelClient(id: string, clientId: string) {
+    const appointment = await this.getEditableAppointment(id);
+    if (appointment.clientId !== clientId) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+    this.assertClientDeadline(appointment.startAt);
+    const canceled = await this.repository.cancelIfActive(id);
+    if (!canceled) {
+      throw new BadRequestException('Este agendamento não pode ser cancelado');
+    }
+    return canceled;
+  }
+
+  async updateStatus(id: string, status: AppointmentStatus) {
+    const appointment = await this.getEditableAppointment(id);
+    if (
+      status === AppointmentStatus.COMPLETED &&
+      appointment.services.some(
+        (service) => service.status !== AppointmentStatus.COMPLETED,
+      )
+    ) {
+      throw new BadRequestException('Todos os serviços devem estar concluídos');
+    }
+    const updated = await this.repository.updateStatus(id, status);
+    if (!updated) {
+      throw new BadRequestException(
+        'O status do agendamento não pode ser alterado',
+      );
+    }
+    return updated;
+  }
+
+  async updateServiceStatus(
+    appointmentId: string,
+    appointmentServiceId: string,
+    status: AppointmentStatus,
+  ) {
+    const item = await this.repository.findAppointmentService(
+      appointmentId,
+      appointmentServiceId,
+    );
+    if (!item) {
+      throw new NotFoundException('Serviço do agendamento não encontrado');
+    }
+    if (
+      !ACTIVE_STATUSES.includes(item.appointment.status) ||
+      !ACTIVE_STATUSES.includes(item.status)
+    ) {
+      throw new BadRequestException(
+        'O status deste serviço não pode mais ser alterado',
+      );
+    }
+    const updated = await this.repository.updateAppointmentServiceStatus(
+      appointmentId,
+      appointmentServiceId,
+      status,
+    );
+    if (!updated) {
+      throw new BadRequestException(
+        'O status deste serviço não pode mais ser alterado',
+      );
+    }
+    return updated;
+  }
+
   private async getSelectedServices(serviceIds: string[]) {
     if (new Set(serviceIds).size !== serviceIds.length) {
       throw new BadRequestException('Não repita serviços na mesma agenda');
@@ -195,6 +284,127 @@ export class AppointmentService {
     }
     const byId = new Map(services.map((service) => [service.id, service]));
     return serviceIds.map((id) => byId.get(id) as SelectedService);
+  }
+
+  private async getEditableAppointment(id: string) {
+    const appointment = await this.repository.findById(id);
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+    if (!ACTIVE_STATUSES.includes(appointment.status)) {
+      throw new BadRequestException(
+        'Agendamentos concluídos ou cancelados não podem ser alterados',
+      );
+    }
+    return appointment;
+  }
+
+  private assertClientDeadline(startAt: Date) {
+    if (startAt.getTime() - Date.now() < CLIENT_UPDATE_LIMIT_MS) {
+      throw new BadRequestException(
+        'Este agendamento não pode mais ser alterado online. Entre em contato por telefone.',
+      );
+    }
+  }
+
+  private async updateSchedule(
+    appointment: NonNullable<
+      Awaited<ReturnType<AppointmentRepository['findById']>>
+    >,
+    dto: UpdateAppointmentDto,
+  ) {
+    if (dto.startAt === undefined && dto.serviceIds === undefined) {
+      throw new BadRequestException(
+        'Informe horário ou serviços para alteração',
+      );
+    }
+
+    const startAt = dto.startAt ? new Date(dto.startAt) : appointment.startAt;
+    const services = dto.serviceIds
+      ? await this.prepareUpdatedServices(appointment, dto.serviceIds)
+      : appointment.services.map((service, index) => ({
+          id: service.id,
+          serviceId: service.serviceId,
+          sequence: index + 1,
+          serviceNameSnapshot: service.serviceNameSnapshot,
+          servicePriceSnapshot: service.servicePriceSnapshot,
+          serviceDurationSnapshot: service.serviceDurationSnapshot,
+        }));
+    const durationMinutes = services.reduce(
+      (total, service) => total + service.serviceDurationSnapshot,
+      0,
+    );
+    const endAt = await this.validateUpdatedSchedule(startAt, durationMinutes);
+    const updated = await this.repository.updateScheduleIfAvailable({
+      appointmentId: appointment.id,
+      startAt,
+      endAt,
+      services,
+    });
+    if (!updated) {
+      throw new ConflictException('O horário selecionado não está disponível');
+    }
+    return updated;
+  }
+
+  private async prepareUpdatedServices(
+    appointment: NonNullable<
+      Awaited<ReturnType<AppointmentRepository['findById']>>
+    >,
+    serviceIds: string[],
+  ) {
+    const selected = await this.getSelectedServices(serviceIds);
+    const existingByService = new Map(
+      appointment.services.map((service) => [service.serviceId, service]),
+    );
+    return selected.map((service, index) => {
+      const existing = existingByService.get(service.id);
+      return {
+        id: existing?.id ?? generateId(),
+        serviceId: service.id,
+        sequence: index + 1,
+        serviceNameSnapshot: existing?.serviceNameSnapshot ?? service.name,
+        servicePriceSnapshot: existing?.servicePriceSnapshot ?? service.price,
+        serviceDurationSnapshot:
+          existing?.serviceDurationSnapshot ?? service.durationMinutes,
+      };
+    });
+  }
+
+  private async validateUpdatedSchedule(
+    startAt: Date,
+    durationMinutes: number,
+  ) {
+    if (Number.isNaN(startAt.getTime()) || startAt <= new Date()) {
+      throw new BadRequestException('O horário deve estar no futuro');
+    }
+    const local = getSalonDateTimeParts(startAt);
+    if (
+      local.second !== 0 ||
+      startAt.getUTCMilliseconds() !== 0 ||
+      local.minute % SLOT_INTERVAL_MINUTES !== 0
+    ) {
+      throw new BadRequestException(
+        'O horário inicial deve respeitar intervalos de 30 minutos',
+      );
+    }
+    const date = `${local.year}-${this.pad(local.month)}-${this.pad(local.day)}`;
+    const businessHour = await this.repository.findBusinessHour(
+      this.getDayOfWeek(date),
+    );
+    if (!businessHour) {
+      throw new BadRequestException('O salão não funciona nesta data');
+    }
+    const endAt = this.addMinutes(startAt, durationMinutes);
+    const fits = this.getPeriods(date, businessHour).some(
+      (period) => startAt >= period.start && endAt <= period.end,
+    );
+    if (!fits) {
+      throw new BadRequestException(
+        'O horário não comporta os serviços dentro do expediente',
+      );
+    }
+    return endAt;
   }
 
   private getDayOfWeek(date: string) {

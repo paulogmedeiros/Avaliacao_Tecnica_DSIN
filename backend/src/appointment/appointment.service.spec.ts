@@ -3,6 +3,7 @@ import { jest } from '@jest/globals';
 import { AppointmentRepository } from './appointment.repository.js';
 import { AppointmentService } from './appointment.service.js';
 import { UserRole } from '../user/enum/role.user.js';
+import { AppointmentStatus } from '../generated/prisma/client.js';
 
 const services = [
   {
@@ -42,6 +43,11 @@ describe('AppointmentService', () => {
       findHistoryByClient: jest.fn(),
       findAll: jest.fn(),
       findById: jest.fn(),
+      updateScheduleIfAvailable: jest.fn(),
+      cancelIfActive: jest.fn(),
+      updateStatus: jest.fn(),
+      findAppointmentService: jest.fn(),
+      updateAppointmentServiceStatus: jest.fn(),
       createIfAvailable: jest.fn(),
     } as unknown as jest.Mocked<AppointmentRepository>;
     service = new AppointmentService(repository);
@@ -203,6 +209,160 @@ describe('AppointmentService', () => {
     await expect(
       service.findById('appointment-id', 'admin-id', UserRole.ADMIN),
     ).resolves.toMatchObject({ id: 'appointment-id' });
+  });
+
+  describe('alterações', () => {
+    const appointment = {
+      id: 'appointment-id',
+      clientId: 'client-id',
+      startAt: new Date('2030-08-20T11:00:00.000Z'),
+      endAt: new Date('2030-08-20T11:45:00.000Z'),
+      status: 'PENDING',
+      services: [
+        {
+          id: 'appointment-service-id',
+          serviceId: services[0].id,
+          serviceNameSnapshot: 'Corte',
+          servicePriceSnapshot: 50,
+          serviceDurationSnapshot: 45,
+          status: 'PENDING',
+        },
+      ],
+    };
+
+    afterEach(() => jest.useRealTimers());
+
+    it('permite alteração do cliente com exatamente 48 horas', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2030-08-18T11:00:00.000Z'));
+      repository.findById.mockResolvedValue(appointment as never);
+      repository.updateScheduleIfAvailable.mockResolvedValue({
+        ...appointment,
+        startAt: new Date('2030-08-21T11:00:00.000Z'),
+      } as never);
+
+      await expect(
+        service.updateClient('appointment-id', 'client-id', {
+          startAt: '2030-08-21T08:00:00-03:00',
+        }),
+      ).resolves.toMatchObject({ id: 'appointment-id' });
+    });
+
+    it('orienta contato por telefone quando faltam menos de 48 horas', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2030-08-18T11:00:01.000Z'));
+      repository.findById.mockResolvedValue(appointment as never);
+
+      await expect(
+        service.updateClient('appointment-id', 'client-id', {
+          startAt: '2030-08-21T08:00:00-03:00',
+        }),
+      ).rejects.toThrow(
+        'Este agendamento não pode mais ser alterado online. Entre em contato por telefone.',
+      );
+    });
+
+    it('permite que o administrador ignore o prazo de 48 horas', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2030-08-20T10:00:00.000Z'));
+      repository.findById.mockResolvedValue(appointment as never);
+      repository.updateScheduleIfAvailable.mockResolvedValue(
+        appointment as never,
+      );
+
+      await expect(
+        service.updateAdmin('appointment-id', {
+          startAt: '2030-08-21T08:00:00-03:00',
+        }),
+      ).resolves.toMatchObject({ id: 'appointment-id' });
+    });
+
+    it('substitui a lista de serviços e cria snapshots para os novos', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2030-08-18T11:00:00.000Z'));
+      repository.findById.mockResolvedValue(appointment as never);
+      repository.updateScheduleIfAvailable.mockResolvedValue(
+        appointment as never,
+      );
+
+      await service.updateClient('appointment-id', 'client-id', {
+        serviceIds: [services[1].id],
+      });
+
+      expect(
+        repository.updateScheduleIfAvailable.mock.calls[0]?.[0],
+      ).toMatchObject({
+        appointmentId: 'appointment-id',
+        startAt: new Date('2030-08-20T11:00:00.000Z'),
+        endAt: new Date('2030-08-20T11:30:00.000Z'),
+        services: [
+          {
+            serviceId: services[1].id,
+            sequence: 1,
+            serviceNameSnapshot: 'Escova',
+            serviceDurationSnapshot: 30,
+          },
+        ],
+      });
+    });
+
+    it('impede alteração de agenda finalizada', async () => {
+      repository.findById.mockResolvedValue({
+        ...appointment,
+        status: 'COMPLETED',
+      } as never);
+
+      await expect(
+        service.updateAdmin('appointment-id', {
+          startAt: '2030-08-21T08:00:00-03:00',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('cancela a agenda do cliente e seus serviços com 48 horas', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2030-08-18T11:00:00.000Z'));
+      repository.findById.mockResolvedValue(appointment as never);
+      repository.cancelIfActive.mockResolvedValue({
+        ...appointment,
+        status: 'CANCELED',
+      } as never);
+
+      await expect(
+        service.cancelClient('appointment-id', 'client-id'),
+      ).resolves.toMatchObject({ status: 'CANCELED' });
+    });
+
+    it('exige todos os serviços concluídos antes de concluir a agenda', async () => {
+      repository.findById.mockResolvedValue(appointment as never);
+
+      await expect(
+        service.updateStatus('appointment-id', AppointmentStatus.COMPLETED),
+      ).rejects.toThrow('Todos os serviços devem estar concluídos');
+    });
+
+    it('permite confirmar a agenda', async () => {
+      repository.findById.mockResolvedValue(appointment as never);
+      repository.updateStatus.mockResolvedValue({
+        ...appointment,
+        status: 'CONFIRMED',
+      } as never);
+
+      await expect(
+        service.updateStatus('appointment-id', AppointmentStatus.CONFIRMED),
+      ).resolves.toMatchObject({ status: 'CONFIRMED' });
+    });
+
+    it('impede alterar o status de serviço finalizado', async () => {
+      repository.findAppointmentService.mockResolvedValue({
+        ...appointment.services[0],
+        status: 'COMPLETED',
+        appointment,
+      } as never);
+
+      await expect(
+        service.updateServiceStatus(
+          'appointment-id',
+          'appointment-service-id',
+          AppointmentStatus.CONFIRMED,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 
   it('cria a agenda com duração total, ordem e snapshots dos serviços', async () => {

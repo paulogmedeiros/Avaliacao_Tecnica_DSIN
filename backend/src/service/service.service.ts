@@ -8,10 +8,11 @@ import { CreateServiceDto } from './dto/create-service.dto.js';
 import { UpdateServiceDto } from './dto/update-service.dto.js';
 import { ServiceEntity } from './entities/service.entity.js';
 import { ServiceRepository } from './service.repository.js';
+import { Prisma } from '../generated/prisma/client.js';
 
 @Injectable()
 export class ServiceService {
-  constructor(private readonly repository: ServiceRepository) { }
+  constructor(private readonly repository: ServiceRepository) {}
 
   async create(dto: CreateServiceDto) {
     const entity = new ServiceEntity(dto);
@@ -19,7 +20,17 @@ export class ServiceService {
     if (serviceNameExists) {
       throw new ConflictException('Serviço já cadastrado');
     }
-    return await this.repository.create(entity);
+    try {
+      return await this.repository.create(entity);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Serviço já cadastrado');
+      }
+      throw error;
+    }
   }
 
   async findActive() {
@@ -36,7 +47,7 @@ export class ServiceService {
         'Informe ao menos um campo para atualização',
       );
     }
-    const service = await this.repository.findById(id)
+    const service = await this.repository.findById(id);
     if (!service) {
       throw new NotFoundException('Serviço não encontrado');
     }
@@ -55,4 +66,3 @@ export class ServiceService {
     return await this.repository.update(id, data);
   }
 }
-

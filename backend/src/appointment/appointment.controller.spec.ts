@@ -3,6 +3,9 @@ import { jest } from '@jest/globals';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import { AvailabilityQueryDto } from './dto/availability-query.dto.js';
 import { HistoryQueryDto } from './dto/history-query.dto.js';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
+import { UpdateAppointmentServiceStatusDto } from './dto/update-appointment-service-status.dto.js';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator.js';
 import { UserRole } from '../user/enum/role.user.js';
 import { AppointmentController } from './appointment.controller.js';
@@ -44,6 +47,11 @@ describe('AppointmentController', () => {
     findHistory: jest.fn(),
     findAll: jest.fn(),
     findById: jest.fn(),
+    updateClient: jest.fn(),
+    cancelClient: jest.fn(),
+    updateAdmin: jest.fn(),
+    updateStatus: jest.fn(),
+    updateServiceStatus: jest.fn(),
     create: jest.fn(),
   } as unknown as jest.Mocked<AppointmentService>;
   const controller = new AppointmentController(service);
@@ -105,6 +113,27 @@ describe('AppointmentController', () => {
       UserRole.CLIENT,
     ]);
   });
+
+  it('usa o cliente autenticado ao alterar uma agenda', async () => {
+    service.updateClient.mockResolvedValue({ id: 'appointment-id' } as never);
+    await controller.updateClient(
+      'appointment-id',
+      { user: { sub: 'client-id', role: UserRole.CLIENT } } as never,
+      { startAt: '2030-08-20T08:00:00-03:00' },
+    );
+    expect(service.updateClient.mock.calls[0]?.[1]).toBe('client-id');
+  });
+
+  it.each(['updateAdmin', 'updateStatus', 'updateServiceStatus'] as const)(
+    'exige ADMIN em %s',
+    (methodName) => {
+      const method = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(controller),
+        methodName,
+      )?.value as object;
+      expect(Reflect.getMetadata(ROLES_KEY, method)).toEqual([UserRole.ADMIN]);
+    },
+  );
 });
 
 describe('HistoryQueryDto', () => {
@@ -126,5 +155,43 @@ describe('HistoryQueryDto', () => {
         { type: 'query', metatype: HistoryQueryDto },
       ),
     ).rejects.toThrow();
+  });
+});
+
+describe('Appointment update DTOs', () => {
+  const pipe = new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  });
+
+  it('aceita alteração de horário e serviços', async () => {
+    await expect(
+      pipe.transform(
+        {
+          startAt: '2030-08-20T08:00:00-03:00',
+          serviceIds: ['0198d000-0000-7000-8000-000000000001'],
+        },
+        { type: 'body', metatype: UpdateAppointmentDto },
+      ),
+    ).resolves.toBeInstanceOf(UpdateAppointmentDto);
+  });
+
+  it('rejeita PENDING no status geral administrativo', async () => {
+    await expect(
+      pipe.transform(
+        { status: 'PENDING' },
+        { type: 'body', metatype: UpdateAppointmentStatusDto },
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('aceita PENDING no status individual de serviço', async () => {
+    await expect(
+      pipe.transform(
+        { status: 'PENDING' },
+        { type: 'body', metatype: UpdateAppointmentServiceStatusDto },
+      ),
+    ).resolves.toBeInstanceOf(UpdateAppointmentServiceStatusDto);
   });
 });

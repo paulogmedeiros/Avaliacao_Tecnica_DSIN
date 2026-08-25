@@ -31,6 +31,25 @@ export interface AppointmentCreationData {
   }>;
 }
 
+export interface AppointmentScheduleUpdateData {
+  appointmentId: string;
+  startAt: Date;
+  endAt: Date;
+  services: Array<{
+    id: string;
+    serviceId: string;
+    sequence: number;
+    serviceNameSnapshot: string;
+    servicePriceSnapshot: Prisma.Decimal;
+    serviceDurationSnapshot: number;
+  }>;
+}
+
+const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.PENDING,
+  AppointmentStatus.CONFIRMED,
+];
+
 @Injectable()
 export class AppointmentRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -106,6 +125,161 @@ export class AppointmentRepository {
     return await this.prisma.appointment.findUnique({
       where: { id },
       include: appointmentDetailsInclude,
+    });
+  }
+
+  async updateScheduleIfAvailable(data: AppointmentScheduleUpdateData) {
+    try {
+      return await this.prisma.$transaction(
+        async (transaction) => {
+          const current = await transaction.appointment.findUnique({
+            where: { id: data.appointmentId },
+            select: { status: true },
+          });
+          if (
+            !current ||
+            !ACTIVE_APPOINTMENT_STATUSES.includes(current.status)
+          ) {
+            return null;
+          }
+
+          const conflict = await transaction.appointment.findFirst({
+            where: {
+              id: { not: data.appointmentId },
+              status: { not: AppointmentStatus.CANCELED },
+              startAt: { lt: data.endAt },
+              endAt: { gt: data.startAt },
+            },
+            select: { id: true },
+          });
+          if (conflict) return null;
+
+          await transaction.appointmentService.updateMany({
+            where: { appointmentId: data.appointmentId },
+            data: { sequence: { increment: 10000 } },
+          });
+          await transaction.appointmentService.deleteMany({
+            where: {
+              appointmentId: data.appointmentId,
+              serviceId: {
+                notIn: data.services.map((service) => service.serviceId),
+              },
+            },
+          });
+
+          for (const service of data.services) {
+            await transaction.appointmentService.upsert({
+              where: {
+                appointmentId_serviceId: {
+                  appointmentId: data.appointmentId,
+                  serviceId: service.serviceId,
+                },
+              },
+              update: { sequence: service.sequence },
+              create: { ...service, appointmentId: data.appointmentId },
+            });
+          }
+
+          return await transaction.appointment.update({
+            where: { id: data.appointmentId },
+            data: { startAt: data.startAt, endAt: data.endAt },
+            include: appointmentDetailsInclude,
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async cancelIfActive(id: string) {
+    return await this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.appointment.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!current || !ACTIVE_APPOINTMENT_STATUSES.includes(current.status)) {
+        return null;
+      }
+      await transaction.appointmentService.updateMany({
+        where: { appointmentId: id },
+        data: { status: AppointmentStatus.CANCELED },
+      });
+      return await transaction.appointment.update({
+        where: { id },
+        data: { status: AppointmentStatus.CANCELED },
+        include: appointmentDetailsInclude,
+      });
+    });
+  }
+
+  async updateStatus(id: string, status: AppointmentStatus) {
+    return await this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.appointment.findUnique({
+        where: { id },
+        include: { services: { select: { status: true } } },
+      });
+      if (!current || !ACTIVE_APPOINTMENT_STATUSES.includes(current.status)) {
+        return null;
+      }
+      if (
+        status === AppointmentStatus.COMPLETED &&
+        current.services.some(
+          (service) => service.status !== AppointmentStatus.COMPLETED,
+        )
+      ) {
+        return null;
+      }
+      if (status === AppointmentStatus.CANCELED) {
+        await transaction.appointmentService.updateMany({
+          where: { appointmentId: id },
+          data: { status: AppointmentStatus.CANCELED },
+        });
+      }
+      return await transaction.appointment.update({
+        where: { id },
+        data: { status },
+        include: appointmentDetailsInclude,
+      });
+    });
+  }
+
+  async findAppointmentService(appointmentId: string, id: string) {
+    return await this.prisma.appointmentService.findFirst({
+      where: { id, appointmentId },
+      include: { appointment: { select: { status: true } } },
+    });
+  }
+
+  async updateAppointmentServiceStatus(
+    appointmentId: string,
+    id: string,
+    status: AppointmentStatus,
+  ) {
+    return await this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.appointmentService.findFirst({
+        where: { id, appointmentId },
+        include: { appointment: { select: { status: true } } },
+      });
+      if (
+        !current ||
+        !ACTIVE_APPOINTMENT_STATUSES.includes(current.appointment.status) ||
+        !ACTIVE_APPOINTMENT_STATUSES.includes(current.status)
+      ) {
+        return null;
+      }
+      return await transaction.appointmentService.update({
+        where: { id },
+        data: { status },
+        include: { service: true },
+      });
     });
   }
 
