@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { AdminAppointmentsTable } from '../components/admin/AdminAppointmentsTable'
+import { AdminAppointmentDetailsModal } from '../components/admin/AdminAppointmentDetailsModal'
+import type { AdminAppointmentAction } from '../components/admin/adminAppointmentActions.js'
 import { filterAdminAppointments } from '../components/admin/adminAppointmentFilter.js'
 import { adminAppointments } from '../components/admin/adminAppointmentsData'
 
@@ -8,14 +10,23 @@ const initialFilters = { search: '', startDate: '', endDate: '', status: '' }
 export function AdminAppointmentsPage() {
   const [filters, setFilters] = useState(initialFilters)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
   const filteredAppointments = filterAdminAppointments(adminAppointments, filters)
+  const selectedAppointment = adminAppointments.find((appointment) => appointment.id === selectedAppointmentId) ?? null
 
   function setFilter(name: keyof typeof initialFilters, value: string) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
-  function showNextStepNotice(appointmentId: string, action: 'view' | 'edit' | 'confirm') {
-    const labels = { view: 'Detalhamento', edit: 'Edição administrativa', confirm: 'Confirmação' }
+  function handleAppointmentAction(appointmentId: string, action: 'view' | AdminAppointmentAction) {
+    if (action === 'view') {
+      setActionNotice(null)
+      setSelectedAppointmentId(appointmentId)
+      return
+    }
+
+    const labels = { edit: 'Edição administrativa', confirm: 'Confirmação', cancel: 'Cancelamento' }
+    setSelectedAppointmentId(null)
     setActionNotice(`${labels[action]} do agendamento ${appointmentId} será disponibilizada na próxima etapa.`)
   }
 
@@ -40,12 +51,14 @@ export function AdminAppointmentsPage() {
 
         {actionNotice ? <div className="admin-action-notice" role="status"><span>{actionNotice}</span><button type="button" onClick={() => setActionNotice(null)} aria-label="Fechar aviso">×</button></div> : null}
 
-        {filteredAppointments.length ? <AdminAppointmentsTable appointments={filteredAppointments} onAction={showNextStepNotice} /> : (
+        {filteredAppointments.length ? <AdminAppointmentsTable appointments={filteredAppointments} onAction={handleAppointmentAction} /> : (
           <div className="admin-empty-results"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4M8.5 11h5" /></svg></span><h3>Nenhum agendamento encontrado</h3><p>Altere os filtros para consultar outro período.</p><button type="button" onClick={() => setFilters(initialFilters)}>Limpar filtros</button></div>
         )}
 
         {filteredAppointments.length ? <footer className="admin-table-footer"><span>Mostrando {filteredAppointments.length} de {adminAppointments.length}</span><div><button type="button" disabled aria-label="Página anterior">‹</button><button type="button" className="is-current" aria-current="page">1</button><button type="button" disabled aria-label="Próxima página">›</button></div></footer> : null}
       </section>
+
+      <AdminAppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onAction={handleAppointmentAction} />
     </div>
   )
 }
