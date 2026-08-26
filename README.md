@@ -74,6 +74,7 @@ O diretório [`docs`](docs) contém a documentação funcional e de banco de dad
 - [Requisitos funcionais](docs/requisitos-funcionais.md): atores, regras de negócio, requisitos detalhados e rastreabilidade com a API.
 - [Dicionário de dados](docs/dicionario-de-dados.md): tabelas, campos, tipos, restrições, enums e relacionamentos.
 - [Diagrama de Entidades e Relacionamentos — DER](docs/Diagrama_de_entidades_e_relacionamentos.png): representação visual da estrutura do banco.
+- [Imagens do sistema funcionando](docs/imagens_do_sistema/): imagens de todo o sistema, pegando desde a área do cliente até o admin.
 
 A API também disponibiliza a documentação interativa do Swagger em `http://localhost:3000/api` enquanto o backend estiver em execução.
 
