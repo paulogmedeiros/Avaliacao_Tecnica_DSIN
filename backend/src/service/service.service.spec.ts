@@ -149,4 +149,3 @@ describe('ServiceService', () => {
     ).rejects.toBe(databaseError);
   });
 });
-

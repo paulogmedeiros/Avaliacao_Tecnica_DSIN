@@ -22,4 +22,3 @@ export class UpdateServiceDto {
   @IsBoolean()
   isActive?: boolean;
 }
-

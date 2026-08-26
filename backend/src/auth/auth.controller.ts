@@ -1,23 +1,17 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { Public } from './decorators/public.decorator.js';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiLogin } from '../swagger/decorators/auth.swagger.js';
+import { SwaggerTags } from '../swagger/swagger.tags.js';
 
-
-@ApiTags('Auth')
+@ApiTags(SwaggerTags.AUTH)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // @ApiOperation(SwaggerDescriptions.Auth.login)
-  // @ApiAuthLoginResponse()
+  @ApiLogin()
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')

@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto.js';
-import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UserRepository } from './user.repository.js';
 import { UserEntity } from './entities/user.entity.js';
 import { hashPassword } from '../utils/generate.hashing.js';
@@ -19,8 +18,7 @@ export class UserService {
     return await this._userRepository.insert(user);
   }
 
-   async findByEmail(email: string) {
+  async findByEmail(email: string) {
     return await this._userRepository.selectByEmail(email);
   }
-
 }

@@ -6,11 +6,8 @@ import { buildMariaDbConfig } from './prisma-connection.util.js';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
-  constructor(
-    configService: ConfigService,
-  ) {
-    const databaseUrl =
-      configService.getOrThrow<string>('DATABASE_URL');
+  constructor(configService: ConfigService) {
+    const databaseUrl = configService.getOrThrow<string>('DATABASE_URL');
 
     const adapter = new PrismaMariaDb(buildMariaDbConfig(databaseUrl));
 

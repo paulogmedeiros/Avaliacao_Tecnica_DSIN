@@ -19,18 +19,32 @@ import { HistoryQueryDto } from './dto/history-query.dto.js';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
 import { UpdateAppointmentServiceStatusDto } from './dto/update-appointment-service-status.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
+import {
+  ApiAdminListAppointments,
+  ApiAdminUpdateAppointment,
+  ApiAdminUpdateAppointmentServiceStatus,
+  ApiAdminUpdateAppointmentStatus,
+  ApiAppointmentAvailability,
+  ApiAppointmentDetails,
+  ApiAppointmentHistory,
+  ApiClientCancelAppointment,
+  ApiClientUpdateAppointment,
+  ApiCreateAppointment,
+} from '../swagger/decorators/appointment.swagger.js';
+import { SwaggerTags } from '../swagger/swagger.tags.js';
 
 interface AuthenticatedRequest extends Request {
   user: { sub: string; role: UserRole };
 }
 
 @ApiBearerAuth()
-@ApiTags('Appointment')
+@ApiTags(SwaggerTags.APPOINTMENT)
 @Controller('appointment')
 export class AppointmentController {
   constructor(private readonly service: AppointmentService) {}
 
   @Get('availability')
+  @ApiAppointmentAvailability()
   async findAvailability(
     @Req() request: AuthenticatedRequest,
     @Query() query: AvailabilityQueryDto,
@@ -43,6 +57,7 @@ export class AppointmentController {
   }
 
   @Get('history')
+  @ApiAppointmentHistory()
   async findHistory(
     @Req() request: AuthenticatedRequest,
     @Query() query: HistoryQueryDto,
@@ -52,11 +67,13 @@ export class AppointmentController {
 
   @Roles(UserRole.ADMIN)
   @Get('admin')
+  @ApiAdminListAppointments()
   async findAll() {
     return await this.service.findAll();
   }
 
   @Get(':id')
+  @ApiAppointmentDetails()
   async findById(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,
@@ -65,6 +82,7 @@ export class AppointmentController {
   }
 
   @Patch(':id')
+  @ApiClientUpdateAppointment()
   async updateClient(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,
@@ -74,6 +92,7 @@ export class AppointmentController {
   }
 
   @Patch(':id/cancel')
+  @ApiClientCancelAppointment()
   async cancelClient(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,
@@ -83,6 +102,7 @@ export class AppointmentController {
 
   @Roles(UserRole.ADMIN)
   @Patch('admin/:id')
+  @ApiAdminUpdateAppointment()
   async updateAdmin(
     @Param('id') id: string,
     @Body() dto: UpdateAppointmentDto,
@@ -92,6 +112,7 @@ export class AppointmentController {
 
   @Roles(UserRole.ADMIN)
   @Patch('admin/:id/status')
+  @ApiAdminUpdateAppointmentStatus()
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateAppointmentStatusDto,
@@ -101,6 +122,7 @@ export class AppointmentController {
 
   @Roles(UserRole.ADMIN)
   @Patch('admin/:appointmentId/services/:appointmentServiceId/status')
+  @ApiAdminUpdateAppointmentServiceStatus()
   async updateServiceStatus(
     @Param('appointmentId') appointmentId: string,
     @Param('appointmentServiceId') appointmentServiceId: string,
@@ -114,6 +136,7 @@ export class AppointmentController {
   }
 
   @Post()
+  @ApiCreateAppointment()
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() dto: CreateAppointmentDto,

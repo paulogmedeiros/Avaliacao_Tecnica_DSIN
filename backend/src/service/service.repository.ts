@@ -34,4 +34,3 @@ export class ServiceRepository {
     return await this.prisma.service.update({ where: { id }, data });
   }
 }
-

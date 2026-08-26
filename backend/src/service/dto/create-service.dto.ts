@@ -35,4 +35,3 @@ export class CreateServiceDto {
   @Min(1)
   durationMinutes!: number;
 }
-

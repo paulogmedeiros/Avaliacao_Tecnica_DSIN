@@ -8,4 +8,3 @@ import { ServiceService } from './service.service.js';
   providers: [ServiceService, ServiceRepository],
 })
 export class ServiceModule {}
-
