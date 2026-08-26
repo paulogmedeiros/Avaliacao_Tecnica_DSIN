@@ -153,7 +153,7 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
                   </button> : null}
                   <label className="booking-date-field">
                     <span>Data do agendamento</span>
-                    <input type="date" min={new Date().toISOString().slice(0, 10)} value={selectedDate} onChange={(event) => {
+                    <input type="date" min={new Date().toISOString().slice(0, 10)} value={selectedDate} onClick={(event) => event.currentTarget.showPicker?.()} onChange={(event) => {
                       setSelectedDate(event.target.value)
                       setSelectedTime('')
                     }} />

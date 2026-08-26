@@ -1009,6 +1009,11 @@ a {
   outline: none;
   background: #fff;
   color: #332d28;
+  cursor: pointer;
+}
+
+.booking-date-field input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
 }
 
 .booking-date-field input:focus {
