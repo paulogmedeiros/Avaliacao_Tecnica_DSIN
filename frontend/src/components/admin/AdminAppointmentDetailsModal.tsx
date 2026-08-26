@@ -1,5 +1,6 @@
 import { getAdminAppointmentActions, type AdminAppointmentAction } from './adminAppointmentActions.js'
 import type { AdminAppointment } from './adminAppointmentsData'
+import type { AppointmentStatus } from '../client/appointmentsData'
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
@@ -9,10 +10,11 @@ function statusClass(status: string) {
   return status.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
-export function AdminAppointmentDetailsModal({ appointment, onClose, onAction }: {
+export function AdminAppointmentDetailsModal({ appointment, onClose, onAction, onServiceStatusChange }: {
   appointment: AdminAppointment | null
   onClose: () => void
   onAction: (appointmentId: string, action: AdminAppointmentAction) => void
+  onServiceStatusChange: (appointmentId: string, serviceId: string, status: AppointmentStatus) => void
 }) {
   if (!appointment) return null
 
@@ -46,7 +48,7 @@ export function AdminAppointmentDetailsModal({ appointment, onClose, onAction }:
                   <span className="admin-service-number">{String(index + 1).padStart(2, '0')}</span>
                   <div><strong>{service.name}</strong><small>{service.id} · {service.duration}</small></div>
                   <strong className="admin-service-price">{formatCurrency(service.price)}</strong>
-                  <span className={`service-status service-status--${statusClass(service.status)}`}>{service.status}</span>
+                  {actions.length ? <label className={`admin-service-status-select admin-service-status-select--${statusClass(service.status)}`}><span className="sr-only">Status de {service.name}</span><select value={service.status} onChange={(event) => onServiceStatusChange(appointment.id, service.id, event.target.value as AppointmentStatus)}><option value="Pendente">Pendente</option><option value="Confirmado">Confirmado</option><option value="Concluído">Concluído</option><option value="Cancelado">Cancelado</option></select></label> : <span className={`service-status service-status--${statusClass(service.status)}`}>{service.status}</span>}
                 </article>
               ))}
             </div>

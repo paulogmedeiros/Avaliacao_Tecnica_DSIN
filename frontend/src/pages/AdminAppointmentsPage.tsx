@@ -3,24 +3,28 @@ import { AdminAppointmentsTable } from '../components/admin/AdminAppointmentsTab
 import { AdminAppointmentDetailsModal } from '../components/admin/AdminAppointmentDetailsModal'
 import { AdminEditAppointmentDrawer } from '../components/admin/AdminEditAppointmentDrawer'
 import { AdminConfirmAppointmentModal } from '../components/admin/AdminConfirmAppointmentModal'
+import { AdminCancelAppointmentModal } from '../components/admin/AdminCancelAppointmentModal'
 import type { AdminAppointmentAction } from '../components/admin/adminAppointmentActions.js'
 import { filterAdminAppointments } from '../components/admin/adminAppointmentFilter.js'
 import { adminAppointments, type AdminAppointment } from '../components/admin/adminAppointmentsData'
 import { confirmAdminAppointment } from '../components/admin/confirmAdminAppointment.js'
+import { cancelAdminAppointment, updateAdminServiceStatus } from '../components/admin/adminServiceStatus.js'
+import type { AppointmentStatus } from '../components/client/appointmentsData'
 
 const initialFilters = { search: '', startDate: '', endDate: '', status: '' }
 
 export function AdminAppointmentsPage() {
   const [filters, setFilters] = useState(initialFilters)
-  const [actionNotice, setActionNotice] = useState<string | null>(null)
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
   const [confirmingAppointmentId, setConfirmingAppointmentId] = useState<string | null>(null)
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null)
   const [appointmentsList, setAppointmentsList] = useState(adminAppointments)
   const filteredAppointments = filterAdminAppointments(appointmentsList, filters)
   const selectedAppointment = appointmentsList.find((appointment) => appointment.id === selectedAppointmentId) ?? null
   const editingAppointment = appointmentsList.find((appointment) => appointment.id === editingAppointmentId) ?? null
   const confirmingAppointment = appointmentsList.find((appointment) => appointment.id === confirmingAppointmentId) ?? null
+  const cancellingAppointment = appointmentsList.find((appointment) => appointment.id === cancellingAppointmentId) ?? null
 
   function setFilter(name: keyof typeof initialFilters, value: string) {
     setFilters((current) => ({ ...current, [name]: value }))
@@ -28,27 +32,23 @@ export function AdminAppointmentsPage() {
 
   function handleAppointmentAction(appointmentId: string, action: 'view' | AdminAppointmentAction) {
     if (action === 'view') {
-      setActionNotice(null)
       setSelectedAppointmentId(appointmentId)
       return
     }
 
     if (action === 'edit') {
-      setActionNotice(null)
       setSelectedAppointmentId(null)
       setEditingAppointmentId(appointmentId)
       return
     }
     if (action === 'confirm') {
-      setActionNotice(null)
       setSelectedAppointmentId(null)
       setConfirmingAppointmentId(appointmentId)
       return
     }
 
-    const labels = { cancel: 'Cancelamento' }
     setSelectedAppointmentId(null)
-    setActionNotice(`${labels[action]} do agendamento ${appointmentId} será disponibilizada na próxima etapa.`)
+    setCancellingAppointmentId(appointmentId)
   }
 
   function saveEditedAppointment(updatedAppointment: AdminAppointment) {
@@ -58,6 +58,17 @@ export function AdminAppointmentsPage() {
   function confirmAppointment(appointment: AdminAppointment) {
     const confirmedAppointment = confirmAdminAppointment(appointment)
     setAppointmentsList((current) => current.map((item) => item.id === confirmedAppointment.id ? confirmedAppointment : item))
+  }
+
+  function changeServiceStatus(appointmentId: string, serviceId: string, status: AppointmentStatus) {
+    setAppointmentsList((current) => current.map((appointment) => appointment.id === appointmentId
+      ? updateAdminServiceStatus(appointment, serviceId, status)
+      : appointment))
+  }
+
+  function cancelAppointment(appointment: AdminAppointment) {
+    const cancelledAppointment = cancelAdminAppointment(appointment)
+    setAppointmentsList((current) => current.map((item) => item.id === cancelledAppointment.id ? cancelledAppointment : item))
   }
 
   return (
@@ -79,8 +90,6 @@ export function AdminAppointmentsPage() {
           <label><span>Status</span><select value={filters.status} onChange={(event) => setFilter('status', event.target.value)}><option value="">Todos</option><option value="Pendente">Pendente</option><option value="Confirmado">Confirmado</option><option value="Concluído">Concluído</option><option value="Cancelado">Cancelado</option></select></label>
         </form>
 
-        {actionNotice ? <div className="admin-action-notice" role="status"><span>{actionNotice}</span><button type="button" onClick={() => setActionNotice(null)} aria-label="Fechar aviso">×</button></div> : null}
-
         {filteredAppointments.length ? <AdminAppointmentsTable appointments={filteredAppointments} onAction={handleAppointmentAction} /> : (
           <div className="admin-empty-results"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4M8.5 11h5" /></svg></span><h3>Nenhum agendamento encontrado</h3><p>Altere os filtros para consultar outro período.</p><button type="button" onClick={() => setFilters(initialFilters)}>Limpar filtros</button></div>
         )}
@@ -88,9 +97,10 @@ export function AdminAppointmentsPage() {
         {filteredAppointments.length ? <footer className="admin-table-footer"><span>Mostrando {filteredAppointments.length} de {appointmentsList.length}</span><div><button type="button" disabled aria-label="Página anterior">‹</button><button type="button" className="is-current" aria-current="page">1</button><button type="button" disabled aria-label="Próxima página">›</button></div></footer> : null}
       </section>
 
-      <AdminAppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onAction={handleAppointmentAction} />
+      <AdminAppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onAction={handleAppointmentAction} onServiceStatusChange={changeServiceStatus} />
       <AdminEditAppointmentDrawer key={editingAppointmentId ?? 'no-admin-edit'} appointment={editingAppointment} onClose={() => setEditingAppointmentId(null)} onSave={saveEditedAppointment} />
       <AdminConfirmAppointmentModal key={confirmingAppointmentId ?? 'no-admin-confirm'} appointment={confirmingAppointment} onClose={() => setConfirmingAppointmentId(null)} onConfirm={confirmAppointment} />
+      <AdminCancelAppointmentModal key={cancellingAppointmentId ?? 'no-admin-cancel'} appointment={cancellingAppointment} onClose={() => setCancellingAppointmentId(null)} onCancel={cancelAppointment} />
     </div>
   )
 }

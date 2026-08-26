@@ -3714,6 +3714,227 @@ a {
   }
 }
 
+/* Status individual e cancelamento administrativo */
+.admin-service-status-select {
+  position: relative;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-service-status-select select {
+  min-height: 29px;
+  padding: 0 27px 0 10px;
+  border: 0;
+  outline: none;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-service-status-select::after {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+
+.admin-service-status-select--pendente {
+  color: #9b641d;
+  background: #fff1d9;
+}
+
+.admin-service-status-select--confirmado {
+  color: #356e51;
+  background: #e4f3e9;
+}
+
+.admin-service-status-select--concluido {
+  color: #40658f;
+  background: #e8f0fa;
+}
+
+.admin-service-status-select--cancelado {
+  color: #a24f45;
+  background: #fae9e7;
+}
+
+.admin-service-status-select select:focus-visible {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.admin-cancel-appointment {
+  position: relative;
+  width: min(470px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 34px;
+  border: 1px solid rgb(255 255 255 / 54%);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 34px 90px rgb(28 19 13 / 30%);
+}
+
+.admin-cancel-appointment__icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 18px;
+  place-items: center;
+  border-radius: 17px;
+  color: #a94e42;
+  background: #faeae7;
+}
+
+.admin-cancel-appointment__icon svg,
+.admin-cancel-appointment__success svg {
+  width: 27px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.admin-cancel-appointment__eyebrow {
+  color: #a84e42;
+  font-size: 0.66rem;
+  font-weight: 820;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-cancel-appointment h2 {
+  margin: 7px 0 8px;
+  color: #302a25;
+  font-family: Georgia, serif;
+  font-size: 1.65rem;
+  font-weight: 500;
+}
+
+.admin-cancel-appointment > p,
+.admin-cancel-appointment__success > p {
+  margin: 0;
+  color: #80756d;
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.admin-cancel-appointment__summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #e7dfd8;
+  border-radius: 14px;
+  background: #fbf8f6;
+}
+
+.admin-cancel-appointment__summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-cancel-appointment__summary small {
+  color: #998e86;
+  font-size: 0.66rem;
+}
+
+.admin-cancel-appointment__summary strong {
+  color: #443b35;
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.admin-cancel-appointment__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.admin-cancel-appointment__actions button,
+.admin-cancel-appointment__success > button {
+  min-height: 44px;
+  border-radius: 11px;
+  font-size: 0.72rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.admin-cancel-appointment__actions button:first-child {
+  border: 1px solid #ded5ce;
+  color: #625850;
+  background: #fff;
+}
+
+.admin-cancel-appointment__actions button:last-child {
+  border: 0;
+  color: #fff;
+  background: #a94e42;
+}
+
+.admin-cancel-appointment__success {
+  display: grid;
+  justify-items: center;
+  padding: 20px 0 4px;
+  text-align: center;
+}
+
+.admin-cancel-appointment__success > span {
+  display: grid;
+  width: 66px;
+  height: 66px;
+  margin-bottom: 18px;
+  place-items: center;
+  border-radius: 21px;
+  color: #fff;
+  background: #a94e42;
+}
+
+.admin-cancel-appointment__success > span svg {
+  width: 31px;
+}
+
+.admin-cancel-appointment__success > p {
+  max-width: 330px;
+}
+
+.admin-cancel-appointment__success > button {
+  width: 100%;
+  margin-top: 22px;
+  border: 0;
+  color: #fff;
+  background: #a94e42;
+}
+
+@media (max-width: 680px) {
+  .admin-details-service-list .admin-service-status-select {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-cancel-overlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .admin-cancel-appointment {
+    padding: 30px 22px 24px;
+    border-radius: 24px 24px 0 0;
+  }
+}
+
 /* Edição administrativa */
 .admin-edit-overlay {
   position: fixed;
