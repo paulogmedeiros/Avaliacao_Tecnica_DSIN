@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { buildMariaDbConfig } from './prisma-connection.util.js';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
@@ -11,16 +12,7 @@ export class PrismaService extends PrismaClient {
     const databaseUrl =
       configService.getOrThrow<string>('DATABASE_URL');
 
-    const url = new URL(databaseUrl);
-
-    const adapter = new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port),
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      timezone: 'UTC',
-    });
+    const adapter = new PrismaMariaDb(buildMariaDbConfig(databaseUrl));
 
     super({
       adapter,

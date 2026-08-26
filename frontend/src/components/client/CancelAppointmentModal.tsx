@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { Appointment } from './appointmentsData'
 
-export function CancelAppointmentModal({ appointment, onClose }: { appointment: Appointment | null; onClose: () => void }) {
+export function CancelAppointmentModal({ appointment, onClose, onConfirm }: { appointment: Appointment | null; onClose: () => void; onConfirm: (id: string) => Promise<unknown> }) {
   const [isCancelled, setIsCancelled] = useState(false)
+  const [error, setError] = useState('')
 
   if (!appointment) return null
 
@@ -34,15 +35,16 @@ export function CancelAppointmentModal({ appointment, onClose }: { appointment: 
 
             <div className="cancel-modal__actions">
               <button className="details-secondary" type="button" onClick={onClose}>Manter agendamento</button>
-              <button className="cancel-confirm" type="button" onClick={() => setIsCancelled(true)}>Sim, cancelar</button>
+              <button className="cancel-confirm" type="button" onClick={async () => { try { await onConfirm(appointment.id); setIsCancelled(true) } catch { setError('Não foi possível cancelar o agendamento.') } }}>Sim, cancelar</button>
             </div>
+            {error ? <p className="form-error" role="alert">{error}</p> : null}
           </>
         ) : (
           <div className="cancel-success">
             <span className="cancel-success__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 12 4 4 8-9" /></svg></span>
             <span className="cancel-modal__eyebrow">Cancelamento concluído</span>
             <h2 id="cancel-title">Agendamento cancelado</h2>
-            <p>Na demonstração, o agendamento e seus {appointment.services.length} serviço(s) foram marcados como cancelados.</p>
+            <p>O agendamento e seus {appointment.services.length} serviço(s) foram marcados como cancelados.</p>
             <button className="details-primary cancel-success__button" type="button" onClick={onClose}>Voltar ao histórico</button>
           </div>
         )}

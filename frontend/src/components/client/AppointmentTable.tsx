@@ -1,5 +1,4 @@
-import { appointments, type AppointmentStatus } from './appointmentsData'
-import { prototypeNow } from './appointmentsData'
+import type { Appointment, AppointmentStatus } from './appointmentsData'
 import { getEditAvailability } from './editRules.js'
 
 function StatusBadge({ status }: { status: AppointmentStatus }) {
@@ -56,10 +55,12 @@ function RowActions({
 }
 
 export function AppointmentTable({
+  appointments,
   onViewDetails,
   onEditAppointment,
   onCancelAppointment,
 }: {
+  appointments: Appointment[]
   onViewDetails: (appointmentId: string) => void
   onEditAppointment: (appointmentId: string) => void
   onCancelAppointment: (appointmentId: string) => void
@@ -78,7 +79,7 @@ export function AppointmentTable({
         </thead>
         <tbody>
           {appointments.map((appointment) => {
-            const editAvailability = getEditAvailability(appointment.scheduledAt, prototypeNow, appointment.status)
+            const editAvailability = getEditAvailability(appointment.scheduledAt, new Date().toISOString(), appointment.status)
             const isTerminal = editAvailability.reason === 'terminal_status'
             const isShortNotice = editAvailability.reason === 'short_notice'
 

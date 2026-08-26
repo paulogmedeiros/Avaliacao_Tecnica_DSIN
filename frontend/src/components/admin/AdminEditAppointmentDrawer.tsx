@@ -1,103 +1,28 @@
 import { useState } from 'react'
-import type { AppointmentService } from '../client/appointmentsData'
-import { buildScheduledAt, calculateAdminServiceSummary, formatDuration } from './adminEditAppointment.js'
 import type { AdminAppointment } from './adminAppointmentsData'
+import { useAvailability, useAppointmentMutations, useServices } from '../../hooks/useAppointments'
+import { formatDuration, toSalonStartAt } from '../../lib/apiMappers.js'
+import { getApiError } from '../../lib/apiError'
 
-const serviceOptions = [
-  { id: 'cut', name: 'Corte feminino', durationMinutes: 45, price: 65 },
-  { id: 'hydration', name: 'Hidratação', durationMinutes: 60, price: 90 },
-  { id: 'color', name: 'Coloração', durationMinutes: 120, price: 180 },
-  { id: 'brush', name: 'Escova', durationMinutes: 45, price: 55 },
-  { id: 'manicure', name: 'Manicure', durationMinutes: 45, price: 40 },
-]
-
-const availableTimes = ['08:00', '08:30', '09:30', '10:00', '10:30', '11:00', '13:00', '13:30', '14:30', '15:00', '16:00']
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-}
-
-function formatAdminDate(date: string) {
-  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
-    .format(new Date(`${date}T12:00:00Z`)).replace('.', '')
-}
-
-export function AdminEditAppointmentDrawer({ appointment, onClose, onSave }: {
-  appointment: AdminAppointment | null
-  onClose: () => void
-  onSave: (appointment: AdminAppointment) => void
-}) {
-  const [selectedServices, setSelectedServices] = useState(() => appointment?.services.map((service) => service.name) ?? [])
+const money = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+export function AdminEditAppointmentDrawer({ appointment, onClose }: { appointment: AdminAppointment | null; onClose: () => void }) {
+  const services = useServices()
+  const [serviceIds, setServiceIds] = useState(() => appointment?.services.map((item) => item.serviceId).filter(Boolean) as string[] ?? [])
   const [date, setDate] = useState(() => appointment?.scheduledAt.slice(0, 10) ?? '')
   const [time, setTime] = useState(() => appointment?.time ?? '')
-  const [isSaved, setIsSaved] = useState(false)
-
+  const [saved, setSaved] = useState(false); const [error, setError] = useState('')
+  const availability = useAvailability(date, serviceIds); const { updateAdmin } = useAppointmentMutations()
   if (!appointment) return null
-  const activeAppointment = appointment
-
-  const selectedOptions = serviceOptions.filter((service) => selectedServices.includes(service.name))
-  const summary = calculateAdminServiceSummary(selectedOptions)
-
-  function toggleService(name: string) {
-    setSelectedServices((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name])
-  }
-
-  function saveChanges() {
-    const services: AppointmentService[] = selectedOptions.map((option) => {
-      const currentService = activeAppointment.services.find((service) => service.name === option.name)
-      return {
-        id: currentService?.id ?? `AS-DEMO-${option.id}`,
-        name: option.name,
-        duration: formatDuration(option.durationMinutes),
-        price: option.price,
-        status: currentService?.status ?? (activeAppointment.status === 'Confirmado' ? 'Confirmado' : 'Pendente'),
-      }
-    })
-
-    onSave({
-      ...activeAppointment,
-      date: formatAdminDate(date),
-      time,
-      scheduledAt: buildScheduledAt(date, time),
-      services,
-      duration: formatDuration(summary.durationMinutes),
-      totalPrice: summary.totalPrice,
-    })
-    setIsSaved(true)
-  }
-
-  return (
-    <div className="admin-edit-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}>
-      <aside className="admin-edit-drawer" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
-        <header className="admin-edit-drawer__header">
-          <div><span>{appointment.id} · Administração</span><h2 id="admin-edit-title">{isSaved ? 'Agendamento atualizado' : 'Editar agendamento'}</h2></div>
-          <button type="button" onClick={onClose} aria-label="Fechar edição"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
-        </header>
-
-        {!isSaved ? <>
-          <div className="admin-edit-drawer__body">
-            <div className="admin-edit-permission"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m7 12 3 3 7-7" /><circle cx="12" cy="12" r="9" /></svg></span><div><strong>Alteração administrativa liberada</strong><p>Não há restrição de 48 horas para atendimentos solicitados por telefone.</p></div></div>
-
-            <section className="admin-edit-section">
-              <div className="admin-edit-section__title"><span>01</span><div><h3>Serviços</h3><p>Adicione ou remova serviços deste agendamento.</p></div></div>
-              <div className="admin-edit-services">
-                {serviceOptions.map((service) => {
-                  const selected = selectedServices.includes(service.name)
-                  return <button className={selected ? 'is-selected' : ''} type="button" key={service.id} onClick={() => toggleService(service.name)} aria-pressed={selected}><span className="admin-edit-check" aria-hidden="true">{selected ? '✓' : ''}</span><span><strong>{service.name}</strong><small>{formatDuration(service.durationMinutes)} · {formatCurrency(service.price)}</small></span></button>
-                })}
-              </div>
-            </section>
-
-            <section className="admin-edit-section admin-edit-section--schedule">
-              <div className="admin-edit-section__title"><span>02</span><div><h3>Data e horário</h3><p>Escolha o novo momento do atendimento.</p></div></div>
-              <label className="admin-edit-date"><span>Data do agendamento</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-              <div className="admin-edit-times" aria-label="Horários disponíveis">{availableTimes.map((option) => <button className={time === option ? 'is-selected' : ''} type="button" key={option} onClick={() => setTime(option)}>{option}</button>)}</div>
-            </section>
-          </div>
-
-          <footer className="admin-edit-drawer__footer"><div><span>{selectedServices.length} serviço(s) · {formatDuration(summary.durationMinutes)}</span><strong>{formatCurrency(summary.totalPrice)}</strong></div><button type="button" disabled={!selectedServices.length || !date || !time} onClick={saveChanges}>Salvar alterações</button></footer>
-        </> : <div className="admin-edit-success"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 12 4 4 8-9" /></svg></span><h3>Alterações salvas</h3><p>A tabela e o detalhamento já mostram as novas informações nesta demonstração.</p><div><small>Novo horário</small><strong>{formatAdminDate(date)}, às {time}</strong></div><button type="button" onClick={onClose}>Voltar aos agendamentos</button></div>}
-      </aside>
-    </div>
-  )
+  const selected = (services.data ?? []).filter((item) => serviceIds.includes(item.id))
+  const minutes = selected.reduce((sum, item) => sum + item.durationMinutes, 0); const price = selected.reduce((sum, item) => sum + Number(item.price), 0)
+  const times = (availability.data?.slots ?? []).map((slot) => new Date(slot.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }))
+  const toggle = (id: string) => setServiceIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  async function save() { setError(''); try { await updateAdmin.mutateAsync({ id: appointment!.id, startAt: toSalonStartAt(date, time), serviceIds }); setSaved(true) } catch (requestError) { setError(getApiError(requestError)) } }
+  return <div className="admin-edit-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}><aside className="admin-edit-drawer" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title">
+    <header className="admin-edit-drawer__header"><div><span>{appointment.id} · Administração</span><h2 id="admin-edit-title">{saved ? 'Agendamento atualizado' : 'Editar agendamento'}</h2></div><button type="button" onClick={onClose} aria-label="Fechar edição">×</button></header>
+    {!saved ? <><div className="admin-edit-drawer__body"><div className="admin-edit-permission"><div><strong>Alteração administrativa liberada</strong><p>Não há restrição de 48 horas.</p></div></div>
+      <section className="admin-edit-section"><div className="admin-edit-section__title"><span>01</span><div><h3>Serviços</h3><p>Adicione ou remova serviços.</p></div></div><div className="admin-edit-services">{(services.data ?? []).map((service) => <button className={serviceIds.includes(service.id) ? 'is-selected' : ''} type="button" key={service.id} onClick={() => toggle(service.id)} aria-pressed={serviceIds.includes(service.id)}><span className="admin-edit-check">{serviceIds.includes(service.id) ? '✓' : ''}</span><span><strong>{service.name}</strong><small>{formatDuration(service.durationMinutes)} · {money(Number(service.price))}</small></span></button>)}</div></section>
+      <section className="admin-edit-section admin-edit-section--schedule"><div className="admin-edit-section__title"><span>02</span><div><h3>Data e horário</h3><p>Escolha o novo momento.</p></div></div><label className="admin-edit-date"><span>Data do agendamento</span><input type="date" value={date} onChange={(event) => { setDate(event.target.value); setTime('') }} /></label><div className="admin-edit-times" aria-label="Horários disponíveis">{times.map((option) => <button className={time === option ? 'is-selected' : ''} type="button" key={option} onClick={() => setTime(option)}>{option}</button>)}</div></section>{error ? <p className="form-error">{error}</p> : null}
+    </div><footer className="admin-edit-drawer__footer"><div><span>{serviceIds.length} serviço(s) · {formatDuration(minutes)}</span><strong>{money(price)}</strong></div><button type="button" disabled={!serviceIds.length || !date || !time || updateAdmin.isPending} onClick={save}>{updateAdmin.isPending ? 'Salvando...' : 'Salvar alterações'}</button></footer></> : <div className="admin-edit-success"><h3>Alterações salvas</h3><p>A agenda foi atualizada no servidor.</p><button type="button" onClick={onClose}>Voltar aos agendamentos</button></div>}
+  </aside></div>
 }

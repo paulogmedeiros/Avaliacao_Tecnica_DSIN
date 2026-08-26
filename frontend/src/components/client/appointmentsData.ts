@@ -2,8 +2,10 @@ export type AppointmentStatus = 'Pendente' | 'Confirmado' | 'Concluído' | 'Canc
 
 export type AppointmentService = {
   id: string
+  serviceId?: string
   name: string
   duration: string
+  durationMinutes?: number
   price: number
   status: AppointmentStatus
 }

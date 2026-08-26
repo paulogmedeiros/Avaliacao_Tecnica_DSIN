@@ -4,5 +4,5 @@ export class LoginResponseDto {
   @ApiProperty({
     example: 'jwt.token.aqui',
   })
-  accessToken!: string;
+  access_token!: string;
 }

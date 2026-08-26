@@ -17,13 +17,6 @@ import { ReportModule } from './report/report.module.js';
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
-        NODE_ENV: Joi.string()
-          .valid('development', 'production', 'test')
-          .default('development')
-          .messages({
-            'any.only':
-              'NODE_ENV deve ser development, production ou test',
-          }),
 
         PORT: Joi.number()
           .port()

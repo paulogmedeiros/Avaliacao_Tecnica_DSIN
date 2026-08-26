@@ -1,7 +1,7 @@
 export type AdminNavigationItem = {
   label: string
   href: string
-  icon: 'dashboard' | 'calendar'
+  icon: 'dashboard' | 'calendar' | 'services'
   isActive: boolean
 }
 

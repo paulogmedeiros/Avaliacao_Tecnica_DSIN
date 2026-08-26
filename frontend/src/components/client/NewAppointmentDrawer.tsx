@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
 import { calculateBookingSummary, canContinueBooking, formatBookingDate } from './bookingFlow.js'
+import { useAvailability, useAppointmentMutations, useServices } from '../../hooks/useAppointments'
+import { getApiError } from '../../lib/apiError'
+import { toSalonStartAt } from '../../lib/apiMappers.js'
 
 type NewAppointmentDrawerProps = {
   isOpen: boolean
@@ -14,15 +17,6 @@ type ServiceOption = {
   price: number
 }
 
-const services: ServiceOption[] = [
-  { id: 'cut', name: 'Corte feminino', description: 'Corte personalizado e finalização.', durationMinutes: 45, price: 65 },
-  { id: 'hydration', name: 'Hidratação', description: 'Tratamento para brilho e maciez.', durationMinutes: 60, price: 90 },
-  { id: 'color', name: 'Coloração', description: 'Coloração completa com tratamento.', durationMinutes: 120, price: 180 },
-  { id: 'brush', name: 'Escova', description: 'Modelagem e acabamento profissional.', durationMinutes: 45, price: 55 },
-  { id: 'manicure', name: 'Manicure', description: 'Cuidado completo e esmaltação.', durationMinutes: 45, price: 40 },
-]
-
-const availableTimes = ['08:00', '08:30', '09:30', '10:00', '10:30', '13:00', '13:30', '14:30', '15:00']
 const stepLabels = ['Serviços', 'Data', 'Horário', 'Revisão']
 
 function formatDuration(minutes: number) {
@@ -38,15 +32,21 @@ function formatCurrency(value: number) {
 }
 
 export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerProps) {
+  const servicesQuery = useServices()
+  const services: ServiceOption[] = useMemo(() => (servicesQuery.data ?? []).map((service) => ({ ...service, description: service.description ?? '' })), [servicesQuery.data])
   const [step, setStep] = useState(1)
   const [selectedServices, setSelectedServices] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [isComplete, setIsComplete] = useState(false)
+  const [requestError, setRequestError] = useState('')
+  const availability = useAvailability(selectedDate, selectedServices)
+  const { create } = useAppointmentMutations()
+  const availableTimes = (availability.data?.slots ?? []).map((slot) => new Date(slot.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }))
 
   const selectedServiceOptions = useMemo(
     () => services.filter((service) => selectedServices.includes(service.id)),
-    [selectedServices],
+    [selectedServices, services],
   )
   const summary = calculateBookingSummary(selectedServiceOptions)
   const formattedDate = selectedDate ? formatBookingDate(selectedDate) : null
@@ -70,6 +70,7 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
     setSelectedDate('')
     setSelectedTime('')
     setIsComplete(false)
+    setRequestError('')
     onClose()
   }
 
@@ -108,6 +109,8 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
                     <h3>Escolha seus serviços</h3>
                     <p>Você pode selecionar mais de uma opção.</p>
                   </div>
+                  {servicesQuery.isLoading ? <p>Carregando serviços...</p> : null}
+                  {servicesQuery.isError ? <p className="form-error">Não foi possível carregar os serviços.</p> : null}
                   <div className="service-options">
                     {services.map((service) => {
                       const isSelected = selectedServices.includes(service.id)
@@ -140,17 +143,17 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
                     <h3>Escolha a data</h3>
                     <p>Atendemos de segunda a sábado.</p>
                   </div>
-                  <button className="date-suggestion" type="button" onClick={() => setSelectedDate('2026-08-29')}>
+                  {availability.data?.suggestion ? <button className="date-suggestion" type="button" onClick={() => setSelectedDate(availability.data!.suggestion!.date)}>
                     <span className="date-suggestion__icon" aria-hidden="true">✦</span>
                     <span>
                       <strong>Você já vem ao salão nesta semana</strong>
-                      <small>Que tal marcar também para sábado, 29 de agosto?</small>
+                      <small>{availability.data.suggestion.message}</small>
                     </span>
                     <span className="date-suggestion__action">Usar data</span>
-                  </button>
+                  </button> : null}
                   <label className="booking-date-field">
                     <span>Data do agendamento</span>
-                    <input type="date" min="2026-08-26" value={selectedDate} onChange={(event) => {
+                    <input type="date" min={new Date().toISOString().slice(0, 10)} value={selectedDate} onChange={(event) => {
                       setSelectedDate(event.target.value)
                       setSelectedTime('')
                     }} />
@@ -166,12 +169,12 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
                 <section className="booking-step">
                   <div className="booking-step__heading">
                     <h3>Escolha o horário</h3>
-                    <p>Horários disponíveis para 29 de agosto.</p>
+                    <p>Horários disponíveis para a data selecionada.</p>
                   </div>
                   <div className="time-period">
                     <span>Manhã</span>
                     <div className="time-options">
-                      {availableTimes.slice(0, 5).map((time) => (
+                      {availableTimes.filter((time) => time < '12:00').map((time) => (
                         <button className={selectedTime === time ? 'is-selected' : ''} type="button" key={time} onClick={() => setSelectedTime(time)}>{time}</button>
                       ))}
                     </div>
@@ -179,12 +182,12 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
                   <div className="time-period">
                     <span>Tarde</span>
                     <div className="time-options">
-                      {availableTimes.slice(5).map((time) => (
+                      {availableTimes.filter((time) => time >= '13:00').map((time) => (
                         <button className={selectedTime === time ? 'is-selected' : ''} type="button" key={time} onClick={() => setSelectedTime(time)}>{time}</button>
                       ))}
                     </div>
                   </div>
-                  <p className="time-note">O horário considera a duração total dos serviços selecionados.</p>
+                  {availability.isLoading ? <p className="time-note">Consultando horários...</p> : <p className="time-note">{availableTimes.length ? 'O horário considera a duração total dos serviços selecionados.' : 'Nenhum horário disponível nesta data.'}</p>}
                 </section>
               ) : null}
 
@@ -218,13 +221,18 @@ export function NewAppointmentDrawer({ isOpen, onClose }: NewAppointmentDrawerPr
               {step > 1 ? <button className="booking-back" type="button" onClick={() => setStep((current) => current - 1)}>Voltar</button> : <span />}
               <div className="booking-footer__summary">
                 {selectedServices.length > 0 ? <span>{selectedServices.length} serviço(s) · <strong>{formatCurrency(summary.price)}</strong></span> : null}
-                <button
+                {requestError ? <p className="form-error" role="alert">{requestError}</p> : null}<button
                   className="booking-next"
                   type="button"
                   disabled={!canContinue}
-                  onClick={() => step === 4 ? setIsComplete(true) : setStep((current) => current + 1)}
+                  onClick={async () => {
+                    if (step !== 4) { setStep((current) => current + 1); return }
+                    setRequestError('')
+                    try { await create.mutateAsync({ startAt: toSalonStartAt(selectedDate, selectedTime), serviceIds: selectedServices }); setIsComplete(true) }
+                    catch (error) { setRequestError(getApiError(error)) }
+                  }}
                 >
-                  {step === 4 ? 'Confirmar agendamento' : 'Continuar'}
+                  {step === 4 ? (create.isPending ? 'Confirmando...' : 'Confirmar agendamento') : 'Continuar'}
                   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M14 7l5 5-5 5" /></svg>
                 </button>
               </div>

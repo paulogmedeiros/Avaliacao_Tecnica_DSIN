@@ -6,10 +6,10 @@ import { AdminConfirmAppointmentModal } from '../components/admin/AdminConfirmAp
 import { AdminCancelAppointmentModal } from '../components/admin/AdminCancelAppointmentModal'
 import type { AdminAppointmentAction } from '../components/admin/adminAppointmentActions.js'
 import { filterAdminAppointments } from '../components/admin/adminAppointmentFilter.js'
-import { adminAppointments, type AdminAppointment } from '../components/admin/adminAppointmentsData'
-import { confirmAdminAppointment } from '../components/admin/confirmAdminAppointment.js'
-import { cancelAdminAppointment, updateAdminServiceStatus } from '../components/admin/adminServiceStatus.js'
+import type { AdminAppointment } from '../components/admin/adminAppointmentsData'
 import type { AppointmentStatus } from '../components/client/appointmentsData'
+import { useAdminAppointments, useAppointment, useAppointmentMutations } from '../hooks/useAppointments'
+import { mapAppointment, toApiStatus } from '../lib/apiMappers.js'
 
 const initialFilters = { search: '', startDate: '', endDate: '', status: '' }
 
@@ -19,9 +19,12 @@ export function AdminAppointmentsPage() {
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
   const [confirmingAppointmentId, setConfirmingAppointmentId] = useState<string | null>(null)
   const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null)
-  const [appointmentsList, setAppointmentsList] = useState(adminAppointments)
+  const appointmentsQuery = useAdminAppointments()
+  const mutations = useAppointmentMutations()
+  const detailQuery = useAppointment(selectedAppointmentId)
+  const appointmentsList = ((appointmentsQuery.data ?? []) as unknown[]).map((item) => mapAppointment(item) as AdminAppointment)
   const filteredAppointments = filterAdminAppointments(appointmentsList, filters)
-  const selectedAppointment = appointmentsList.find((appointment) => appointment.id === selectedAppointmentId) ?? null
+  const selectedAppointment = selectedAppointmentId ? (detailQuery.data ? mapAppointment(detailQuery.data) as AdminAppointment : appointmentsList.find((appointment) => appointment.id === selectedAppointmentId) ?? null) : null
   const editingAppointment = appointmentsList.find((appointment) => appointment.id === editingAppointmentId) ?? null
   const confirmingAppointment = appointmentsList.find((appointment) => appointment.id === confirmingAppointmentId) ?? null
   const cancellingAppointment = appointmentsList.find((appointment) => appointment.id === cancellingAppointmentId) ?? null
@@ -51,24 +54,16 @@ export function AdminAppointmentsPage() {
     setCancellingAppointmentId(appointmentId)
   }
 
-  function saveEditedAppointment(updatedAppointment: AdminAppointment) {
-    setAppointmentsList((current) => current.map((appointment) => appointment.id === updatedAppointment.id ? updatedAppointment : appointment))
+  async function confirmAppointment(appointment: AdminAppointment) {
+    await mutations.updateStatus.mutateAsync({ id: appointment.id, status: 'CONFIRMED' })
   }
 
-  function confirmAppointment(appointment: AdminAppointment) {
-    const confirmedAppointment = confirmAdminAppointment(appointment)
-    setAppointmentsList((current) => current.map((item) => item.id === confirmedAppointment.id ? confirmedAppointment : item))
+  async function changeServiceStatus(appointmentId: string, serviceId: string, status: AppointmentStatus) {
+    await mutations.updateServiceStatus.mutateAsync({ appointmentId, appointmentServiceId: serviceId, status: toApiStatus(status) })
   }
 
-  function changeServiceStatus(appointmentId: string, serviceId: string, status: AppointmentStatus) {
-    setAppointmentsList((current) => current.map((appointment) => appointment.id === appointmentId
-      ? updateAdminServiceStatus(appointment, serviceId, status)
-      : appointment))
-  }
-
-  function cancelAppointment(appointment: AdminAppointment) {
-    const cancelledAppointment = cancelAdminAppointment(appointment)
-    setAppointmentsList((current) => current.map((item) => item.id === cancelledAppointment.id ? cancelledAppointment : item))
+  async function cancelAppointment(appointment: AdminAppointment) {
+    await mutations.updateStatus.mutateAsync({ id: appointment.id, status: 'CANCELED' })
   }
 
   return (
@@ -90,15 +85,18 @@ export function AdminAppointmentsPage() {
           <label><span>Status</span><select value={filters.status} onChange={(event) => setFilter('status', event.target.value)}><option value="">Todos</option><option value="Pendente">Pendente</option><option value="Confirmado">Confirmado</option><option value="Concluído">Concluído</option><option value="Cancelado">Cancelado</option></select></label>
         </form>
 
-        {filteredAppointments.length ? <AdminAppointmentsTable appointments={filteredAppointments} onAction={handleAppointmentAction} /> : (
+        {appointmentsQuery.isLoading ? <p className="request-state">Carregando agendamentos...</p> : null}
+        {appointmentsQuery.isError ? <p className="form-error">Não foi possível carregar os agendamentos.</p> : null}
+        {!appointmentsQuery.isLoading && !appointmentsQuery.isError && filteredAppointments.length ? <AdminAppointmentsTable appointments={filteredAppointments} onAction={handleAppointmentAction} /> : null}
+        {!appointmentsQuery.isLoading && !appointmentsQuery.isError && !filteredAppointments.length ? (
           <div className="admin-empty-results"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4M8.5 11h5" /></svg></span><h3>Nenhum agendamento encontrado</h3><p>Altere os filtros para consultar outro período.</p><button type="button" onClick={() => setFilters(initialFilters)}>Limpar filtros</button></div>
-        )}
+        ) : null}
 
         {filteredAppointments.length ? <footer className="admin-table-footer"><span>Mostrando {filteredAppointments.length} de {appointmentsList.length}</span><div><button type="button" disabled aria-label="Página anterior">‹</button><button type="button" className="is-current" aria-current="page">1</button><button type="button" disabled aria-label="Próxima página">›</button></div></footer> : null}
       </section>
 
       <AdminAppointmentDetailsModal appointment={selectedAppointment} onClose={() => setSelectedAppointmentId(null)} onAction={handleAppointmentAction} onServiceStatusChange={changeServiceStatus} />
-      <AdminEditAppointmentDrawer key={editingAppointmentId ?? 'no-admin-edit'} appointment={editingAppointment} onClose={() => setEditingAppointmentId(null)} onSave={saveEditedAppointment} />
+      <AdminEditAppointmentDrawer key={editingAppointmentId ?? 'no-admin-edit'} appointment={editingAppointment} onClose={() => setEditingAppointmentId(null)} />
       <AdminConfirmAppointmentModal key={confirmingAppointmentId ?? 'no-admin-confirm'} appointment={confirmingAppointment} onClose={() => setConfirmingAppointmentId(null)} onConfirm={confirmAppointment} />
       <AdminCancelAppointmentModal key={cancellingAppointmentId ?? 'no-admin-cancel'} appointment={cancellingAppointment} onClose={() => setCancellingAppointmentId(null)} onCancel={cancelAppointment} />
     </div>

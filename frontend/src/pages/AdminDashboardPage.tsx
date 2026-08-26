@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { WeeklyMetricCard } from '../components/admin/WeeklyMetricCard'
-import { calculateWeeklyReport, getWeekRange, moveWeek } from '../components/admin/weeklyReport.js'
-import { appointments } from '../components/client/appointmentsData'
+import { getWeekRange, moveWeek } from '../components/admin/weeklyReport.js'
+import { useWeeklyReport } from '../hooks/useAppointments'
+import { useAuthStore } from '../stores/auth.store'
 
-const currentWeek = '2026-08-24'
+const currentWeek = new Date().toISOString().slice(0, 10)
 
 function formatWeek(start: string, end: string) {
   const startDate = new Date(`${start}T12:00:00Z`)
@@ -19,13 +20,15 @@ function formatCurrency(value: number) {
 export function AdminDashboardPage() {
   const [selectedWeek, setSelectedWeek] = useState(currentWeek)
   const range = getWeekRange(selectedWeek)
-  const report = calculateWeeklyReport(appointments, selectedWeek)
+  const reportQuery = useWeeklyReport(selectedWeek)
+  const report = reportQuery.data
+  const name = useAuthStore((state) => state.user?.name) ?? 'Administradora'
 
   return (
     <div className="admin-page">
       <header className="admin-page__header">
-        <div><p>Olá, Leila</p><h1>Visão semanal</h1><span>Acompanhe o desempenho do salão em um só lugar.</span></div>
-        <div className="admin-date"><small>Hoje</small><strong>25 de agosto de 2026</strong></div>
+        <div><p>Olá, {name}</p><h1>Visão semanal</h1><span>Acompanhe o desempenho do salão em um só lugar.</span></div>
+        <div className="admin-date"><small>Hoje</small><strong>{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}</strong></div>
       </header>
 
       <section className="weekly-report" aria-labelledby="weekly-report-title">
@@ -42,16 +45,18 @@ export function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="weekly-metrics">
-          <WeeklyMetricCard label="Agendamentos" value={report.totalAppointments} note="recebidos na semana" icon="calendar" tone="accent" />
-          <WeeklyMetricCard label="Receita estimada" value={formatCurrency(report.estimatedRevenue)} note="desconsidera cancelados" icon="money" tone="accent" />
-          <WeeklyMetricCard label="Pendentes" value={report.pending} note="aguardando confirmação" icon="clock" />
-          <WeeklyMetricCard label="Confirmados" value={report.confirmed} note="horários reservados" icon="check" />
-          <WeeklyMetricCard label="Concluídos" value={report.completed} note="atendimentos finalizados" icon="complete" tone="success" />
-          <WeeklyMetricCard label="Cancelados" value={report.cancelled} note="mantidos no histórico" icon="cancel" tone="danger" />
-          <WeeklyMetricCard label="Serviços previstos" value={report.totalServices} note="em agendas não canceladas" icon="services" />
-          <WeeklyMetricCard label="Taxa de conclusão" value={`${report.completionRate}%`} note="sobre todos os agendamentos" icon="rate" />
-        </div>
+        {reportQuery.isLoading ? <p className="request-state">Carregando relatório...</p> : null}
+        {reportQuery.isError ? <p className="form-error">Não foi possível carregar o relatório.</p> : null}
+        {report ? <div className="weekly-metrics">
+          <WeeklyMetricCard label="Agendamentos" value={report.appointments.total} note="recebidos na semana" icon="calendar" tone="accent" />
+          <WeeklyMetricCard label="Receita estimada" value={formatCurrency(Number(report.revenue.expected))} note="serviços pendentes e confirmados" icon="money" tone="accent" />
+          <WeeklyMetricCard label="Pendentes" value={report.appointments.pending} note="aguardando confirmação" icon="clock" />
+          <WeeklyMetricCard label="Confirmados" value={report.appointments.confirmed} note="horários reservados" icon="check" />
+          <WeeklyMetricCard label="Concluídos" value={report.appointments.completed} note="atendimentos finalizados" icon="complete" tone="success" />
+          <WeeklyMetricCard label="Cancelados" value={report.appointments.canceled} note="mantidos no histórico" icon="cancel" tone="danger" />
+          <WeeklyMetricCard label="Serviços previstos" value={report.services.total} note="serviços solicitados" icon="services" />
+          <WeeklyMetricCard label="Taxa de ocupação" value={`${report.occupancy.occupancyRate}%`} note="sobre os horários disponíveis" icon="rate" />
+        </div> : null}
       </section>
     </div>
   )

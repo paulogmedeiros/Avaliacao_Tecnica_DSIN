@@ -4,16 +4,17 @@ import type { AdminAppointment } from './adminAppointmentsData'
 export function AdminCancelAppointmentModal({ appointment, onClose, onCancel }: {
   appointment: AdminAppointment | null
   onClose: () => void
-  onCancel: (appointment: AdminAppointment) => void
+  onCancel: (appointment: AdminAppointment) => Promise<unknown>
 }) {
   const [isCancelled, setIsCancelled] = useState(false)
+  const [error, setError] = useState('')
 
   if (!appointment) return null
   const activeAppointment = appointment
 
-  function cancel() {
-    onCancel(activeAppointment)
-    setIsCancelled(true)
+  async function cancel() {
+    setError('')
+    try { await onCancel(activeAppointment); setIsCancelled(true) } catch { setError('Não foi possível cancelar o agendamento.') }
   }
 
   return (
@@ -27,7 +28,8 @@ export function AdminCancelAppointmentModal({ appointment, onClose, onCancel }: 
           <p>O agendamento e todos os serviços associados serão marcados como cancelados e permanecerão no histórico.</p>
           <div className="admin-cancel-appointment__summary"><div><small>Cliente</small><strong>{appointment.customer.name}</strong></div><div><small>Data e horário</small><strong>{appointment.date}, às {appointment.time}</strong></div><div><small>Serviços afetados</small><strong>{appointment.services.length}</strong></div></div>
           <div className="admin-cancel-appointment__actions"><button type="button" onClick={onClose}>Manter agendamento</button><button type="button" onClick={cancel}>Sim, cancelar tudo</button></div>
-        </> : <div className="admin-cancel-appointment__success"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 12 4 4 8-9" /></svg></span><h2 id="admin-cancel-title">Agendamento cancelado</h2><p>A agenda e seus {appointment.services.length} serviço(s) foram atualizados nesta demonstração.</p><button type="button" onClick={onClose}>Voltar aos agendamentos</button></div>}
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+        </> : <div className="admin-cancel-appointment__success"><span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m6 12 4 4 8-9" /></svg></span><h2 id="admin-cancel-title">Agendamento cancelado</h2><p>A agenda e seus {appointment.services.length} serviço(s) foram atualizados.</p><button type="button" onClick={onClose}>Voltar aos agendamentos</button></div>}
       </section>
     </div>
   )
